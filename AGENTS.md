@@ -6,7 +6,7 @@
 elevate/
 ├── libs/braille/          # Canonical braille byte codec (Python + TS)
 ├── libs/audit/            # Hash-chained audit log (Python + TS)
-├── libs/bbid/             # Braille Binary Identity (Python + TS + spec)
+├── libs/bbid/             # Braille Binary Identity (Python + TS + spec + engine)
 ├── packages/cortex/       # LLM routing kernel (Python)
 ├── packages/famulus/      # Offline agent engine (Python)
 ├── packages/sal/          # Auth + tools + money service (Node.js)
@@ -37,6 +37,9 @@ When modifying shared code in `libs/`, check all consumers:
 - `libs/braille/` → used by every package
 - `libs/audit/`   → used by cortex, famulus, sal, braille-bench, meta
 - `libs/bbid/`    → used by sal, cerebellar
+  - `libs/bbid/engine/` is the real implementation (SRP-LSH, BCH, ED-DUP, SQLite)
+  - `libs/bbid/spec/` has the formal specification
+  - `libs/bbid/typescript/` and `libs/bbid/python/` are the simpler wrappers
 
 ## Package-Specific Notes
 
