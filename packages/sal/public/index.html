@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PAES - Primitive System</title>
+  <base href="/">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      padding: 40px;
+      max-width: 800px;
+      width: 100%;
+    }
+    h1 {
+      color: #764ba2;
+      margin-bottom: 30px;
+      text-align: center;
+    }
+    .logo {
+      display: block;
+      margin: 0 auto 30px;
+      width: 120px;
+      height: 120px;
+    }
+    .section {
+      margin-bottom: 30px;
+    }
+    h2 {
+      color: #667eea;
+      margin-bottom: 15px;
+      font-size: 18px;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      color: #555;
+      font-weight: 500;
+    }
+    input, textarea, select {
+      width: 100%;
+      padding: 10px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: border-color 0.3s;
+    }
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+    button:active {
+      transform: translateY(0);
+    }
+    .result {
+      background: #f5f5f5;
+      border-radius: 8px;
+      padding: 15px;
+      margin-top: 15px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .tabs {
+      display: flex;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #e0e0e0;
+    }
+    .tab {
+      padding: 10px 20px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      color: #999;
+      transition: all 0.3s;
+    }
+    .tab:hover {
+      color: #667eea;
+    }
+    .tab.active {
+      color: #667eea;
+      border-bottom-color: #667eea;
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <img src="paes-logo.svg" alt="PAES Logo" class="logo">
+    <h1>Permissioned Action Execution System</h1>
+    
+    <div class="tabs">
+      <div class="tab active" data-tab="create">Create File</div>
+      <div class="tab" data-tab="read">Read File</div>
+      <div class="tab" data-tab="exec">Execute Command</div>
+    </div>
+    
+    <div id="create" class="tab-content active">
+      <div class="section">
+        <h2>Create File</h2>
+        <div class="form-group">
+          <label>File Path</label>
+          <input type="text" id="create-path" placeholder="example.txt">
+        </div>
+        <div class="form-group">
+          <label>Content</label>
+          <textarea id="create-content" rows="4" placeholder="File content..."></textarea>
+        </div>
+        <button onclick="createFile()">Create File</button>
+        <div id="create-result" class="result" style="display: none;"></div>
+      </div>
+    </div>
+    
+    <div id="read" class="tab-content">
+      <div class="section">
+        <h2>Read File</h2>
+        <div class="form-group">
+          <label>File Path</label>
+          <input type="text" id="read-path" placeholder="example.txt">
+        </div>
+        <div class="form-group">
+          <label>Format</label>
+          <select id="read-format">
+            <option value="text">Text</option>
+            <option value="json">JSON</option>
+            <option value="binary">Binary</option>
+          </select>
+        </div>
+        <button onclick="readFile()">Read File</button>
+        <div id="read-result" class="result" style="display: none;"></div>
+      </div>
+    </div>
+    
+    <div id="exec" class="tab-content">
+      <div class="section">
+        <h2>Execute Command</h2>
+        <div class="form-group">
+          <label>Command</label>
+          <input type="text" id="exec-command" placeholder="ls -la">
+        </div>
+        <button onclick="executeCommand()">Execute</button>
+        <div id="exec-result" class="result" style="display: none;"></div>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // Tab switching
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(tab.dataset.tab).classList.add('active');
+      });
+    });
+    
+    async function createFile() {
+      const path = document.getElementById('create-path').value;
+      const content = document.getElementById('create-content').value;
+      const resultDiv = document.getElementById('create-result');
+      
+      try {
+        const response = await fetch('http://localhost:3000/tools/execute', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            toolName: 'create',
+            parameters: {
+              type: 'file',
+              path: path,
+              content: content
+            }
+          })
+        });
+        
+        const result = await response.json();
+        resultDiv.style.display = 'block';
+        resultDiv.textContent = JSON.stringify(result, null, 2);
+      } catch (error) {
+        resultDiv.style.display = 'block';
+        resultDiv.textContent = 'Error: ' + error.message;
+      }
+    }
+    
+    async function readFile() {
+      const path = document.getElementById('read-path').value;
+      const format = document.getElementById('read-format').value;
+      const resultDiv = document.getElementById('read-result');
+      
+      try {
+        const response = await fetch('http://localhost:3000/tools/execute', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            toolName: 'read',
+            parameters: {
+              path: path,
+              format: format
+            }
+          })
+        });
+        
+        const result = await response.json();
+        resultDiv.style.display = 'block';
+        resultDiv.textContent = JSON.stringify(result, null, 2);
+      } catch (error) {
+        resultDiv.style.display = 'block';
+        resultDiv.textContent = 'Error: ' + error.message;
+      }
+    }
+    
+    async function executeCommand() {
+      const command = document.getElementById('exec-command').value;
+      const resultDiv = document.getElementById('exec-result');
+      
+      try {
+        const response = await fetch('http://localhost:3000/tools/execute', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            toolName: 'exec',
+            parameters: {
+              command: command
+            }
+          })
+        });
+        
+        const result = await response.json();
+        resultDiv.style.display = 'block';
+        resultDiv.textContent = JSON.stringify(result, null, 2);
+      } catch (error) {
+        resultDiv.style.display = 'block';
+        resultDiv.textContent = 'Error: ' + error.message;
+      }
+    }
+  </script>
+</body>
+</html>

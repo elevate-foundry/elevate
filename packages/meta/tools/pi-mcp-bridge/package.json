@@ -1,0 +1,16 @@
+{
+  "name": "pi-mcp-bridge",
+  "private": true,
+  "type": "module",
+  "keywords": ["pi-package"],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "jsonc-parser": "^3.3.1"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "pi": {
+    "extensions": ["./extensions"]
+  }
+}

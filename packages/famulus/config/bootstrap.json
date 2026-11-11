@@ -1,0 +1,31 @@
+{
+  "_comment": "Phase -1 cold-start config. JSON (not YAML) so the bootstrap stays stdlib-only. Nothing here is hardcoded in source; edit freely. Secrets (wifi passwords) should ideally live in the OS keychain, not here.",
+
+  "ollama_version": "latest",
+
+  "known_wifi": [],
+
+  "ollama_sources": {
+    "_comment": "Per os/arch download manifest for the VERIFIED path. Fill in sha256 to enable a verified install; without it the installer is treated as UNVERIFIED and requires explicit confirmation.",
+    "linux/x86_64": {
+      "url": "https://ollama.com/download/ollama-linux-amd64.tgz",
+      "sha256": null
+    },
+    "linux/aarch64": {
+      "url": "https://ollama.com/download/ollama-linux-arm64.tgz",
+      "sha256": null
+    },
+    "darwin": {
+      "url": "https://ollama.com/download/Ollama-darwin.zip",
+      "sha256": null
+    }
+  },
+
+  "seed_models": [
+    { "name": "qwen2.5:0.5b", "b": 1 },
+    { "name": "llama3.2:1b",  "b": 1 },
+    { "name": "gemma2:2b",    "b": 3 },
+    { "name": "llama3.2:3b",  "b": 3 },
+    { "name": "qwen2.5:7b",   "b": 8 }
+  ]
+}

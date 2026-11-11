@@ -1,0 +1,6 @@
+# Cloned repos and generated corpus are large / reproducible — don't commit.
+repos/
+out/
+__pycache__/
+*.pyc
+.venv/

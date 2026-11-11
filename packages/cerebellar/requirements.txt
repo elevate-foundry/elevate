@@ -1,0 +1,7 @@
+streamlit
+aiohttp
+python-dotenv
+pillow
+numpy
+requests
+scikit-learn

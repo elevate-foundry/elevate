@@ -1,0 +1,10 @@
+torch
+transformers
+fastapi
+uvicorn[standard]
+numpy
+
+# Testing
+pytest
+pytest-playwright
+playwright

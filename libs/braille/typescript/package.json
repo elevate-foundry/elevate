@@ -1,0 +1,20 @@
+{
+  "name": "@elevate/braille",
+  "version": "0.1.0",
+  "description": "Canonical braille byte codec for the Elevate Foundry ecosystem",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test dist/codec.test.js"
+  },
+  "files": ["dist"],
+  "license": "MIT"
+}

@@ -1,0 +1,691 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows,positioning}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\title{Permissioned Action Execution: \\
+\large A Model-Agnostic Architecture for Autonomous Economic Activity}
+\author{Sal Architecture Working Group}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+As artificial intelligence models become increasingly commoditized, the competitive advantage in AI-mediated systems shifts from owning cognition to governing permissioned action. This paper presents a model-agnostic execution architecture that coordinates multiple frontier models through a unified tool harness, identity layer, authorization system, and compliance framework. We argue that the durable economic position in the AI era belongs not to the smartest model company, but to the system that institutions trust to execute autonomous actions on their behalf. Our implementation demonstrates how bash-like tool primitives (create, exec, read, help) combined with rigorous permission checking, audit logging, and reversible operations can serve as the neutral execution substrate for agentic capitalism.
+\end{abstract}
+
+\section{Threat Model and Security Analysis}
+
+\subsection{Threat Model}
+
+We consider PAES operating in an adversarial environment with the following threat actors:
+
+\textbf{Malicious Actors}: External attackers attempting to execute unauthorized actions, escalate privileges, or exfiltrate sensitive data.
+
+\textbf{Compromised Models}: Frontier model providers behaving maliciously or being compromised to inject harmful responses.
+
+\textbf{Insider Threats}: Authenticated users attempting actions beyond their granted permissions.
+
+\textbf{System Compromise}: Direct attacks on PAES infrastructure attempting to bypass authorization or tamper with audit logs.
+
+\subsection{Security Properties}
+
+\textbf{Authorization Enforcement}: The authorization function $\alpha$ must satisfy:
+\[
+\forall a \in \mathcal{A}, \forall t \in \mathcal{T}: \epsilon(t, p, a) \text{ executes } \implies \alpha(a, t) = \text{true}
+\]
+
+\textbf{Audit Immutability}: Audit log entries must be cryptographically linked to prevent tampering:
+\[
+\forall \ell_i, \ell_{i+1} \in \mathcal{L}: \ell_{i+1}.\text{prev\_hash} = \text{hash}(\ell_i)
+\]
+
+\textbf{Least Privilege}: Actors should only have permissions necessary for their role:
+\[
+\forall a \in \mathcal{A}: \text{granted}(a) = \bigcup_{t \in \text{required}(a)} \text{required}(t)
+\]
+
+\textbf{Input Validation}: All tool parameters must be validated against schema before execution:
+\[
+\forall t \in \mathcal{T}, \forall p \in \mathcal{P}aram: \epsilon(t, p, a) \text{ executes } \implies \text{validate}(p, \text{schema}(t)) = \text{true}
+\]
+
+\subsection{Mitigation Strategies}
+
+\textbf{Permission Checks}: Every tool execution requires scope-based authorization via the auth layer. Tools declare required permissions, and sessions must have matching scopes.
+
+\textbf{Parameter Validation}: JSON Schema validation prevents injection attacks and ensures type safety for all tool parameters.
+
+\textbf{Audit Chain Verification}: Audit events are cryptographically linked (hash chain) to detect tampering. The compliance function verifies chain integrity before accepting audit history.
+
+\textbf{Result Sanitization}: Sensitive data (passwords, tokens, secrets) is redacted from audit logs before storage.
+
+\textbf{Dangerous Command Blocking}: The exec tool blocks known dangerous commands (rm, dd, mkfs, format, del, erase) at the harness level.
+
+\textbf{Model Isolation}: Frontier models receive only sanitized context. Direct system access is mediated through the tool harness, not model output.
+
+\textbf{Reversibility}: Tools marked as reversible enable rollback operations, providing recovery from unintended actions.
+
+\subsection{Limitations}
+
+\textbf{Model Injection}: Malicious models could attempt to influence tool selection or parameter construction. Mitigated by separating model cognition from tool execution—models recommend, systems decide.
+
+\textbf{Privilege Escalation}: Actors with broad permissions could abuse their access. Mitigated by least-privilege principle and audit trails for accountability.
+
+\textbf{Denial of Service}: Rapid tool execution could exhaust system resources. Mitigated by rate limiting and execution history tracking.
+
+\textbf{Supply Chain}: Compromised dependencies in tool implementations could introduce vulnerabilities. Mitigated by dependency-free core architecture and minimal external dependencies.
+
+\section{Mathematical Formalization}
+
+We formalize the Permissioned Action Execution System (PAES) as a tuple of sets, functions, and relations that govern autonomous economic action.
+
+\subsection{Definition}
+
+Let PAES be defined as:
+
+\[
+\mathcal{P} = (\mathcal{M}, \mathcal{T}, \mathcal{A}, \mathcal{P}erm, \mathcal{S}, \rho, \epsilon, \alpha, \gamma, \lambda)
+\]
+
+where:
+
+\begin{itemize}
+    \item $\mathcal{M}$: Set of frontier models (cognition engines)
+    \item $\mathcal{T}$: Set of tools (action primitives)
+    \item $\mathcal{A}$: Set of actors (authenticated entities)
+    \item $\mathcal{P}erm$: Set of permissions (authorization scopes)
+    \item $\mathcal{S}$: Set of system states (durable memory)
+    \item $\rho$: Model router function
+    \item $\epsilon$: Tool executor function
+    \item $\alpha$: Authorization function
+    \item $\gamma$: Compliance/audit function
+    \item $\lambda$: Identity function
+\end{itemize}
+
+\subsection{Model Router}
+
+The model router selects appropriate cognition for a given task:
+
+\[
+\rho: \mathcal{M} \times \mathcal{Q} \rightarrow \mathcal{M}^*
+\]
+
+where $\mathcal{Q}$ is the set of queries/prompts and $\mathcal{M}^* \subseteq \mathcal{M}$ is the subset of models selected for execution.
+
+For racing/braiding:
+
+\[
+\rho_{race}(\mathcal{Q}) = \arg\max_{m \in \mathcal{M}^*} \text{response}(m, \mathcal{Q})
+\]
+
+\[
+\rho_{braid}(\mathcal{Q}) = \text{synthesize}(\{\text{response}(m, \mathcal{Q}) \mid m \in \mathcal{M}^*\})
+\]
+
+\subsection{Tool Executor}
+
+The tool executor governs action execution:
+
+\[
+\epsilon: \mathcal{T} \times \mathcal{P}aram \times \mathcal{A} \rightarrow \mathcal{R} \times \mathcal{S}'
+\]
+
+where:
+\begin{itemize}
+    \item $\mathcal{P}aram$ is the set of valid parameters for tool $t \in \mathcal{T}$
+    \item $\mathcal{R}$ is the set of execution results
+    \item $\mathcal{S}'$ is the updated system state
+\end{itemize}
+
+Tool execution requires authorization:
+
+\[
+\epsilon(t, p, a) = \begin{cases}
+\text{execute}(t, p, a) & \text{if } \alpha(a, t) = \text{true} \\
+\text{error}(\text{``unauthorized''}) & \text{otherwise}
+\end{cases}
+\]
+
+\subsection{Authorization Function}
+
+The authorization function checks if an actor has required permissions:
+
+\[
+\alpha: \mathcal{A} \times \mathcal{T} \rightarrow \{\text{true}, \text{false}\}
+\]
+
+\[
+\alpha(a, t) = \forall p \in \text{required}(t): p \in \text{granted}(a)
+\]
+
+where $\text{required}(t) \subseteq \mathcal{P}erm$ are permissions required by tool $t$, and $\text{granted}(a) \subseteq \mathcal{P}erm$ are permissions granted to actor $a$.
+
+\subsection{Compliance Function}
+
+The compliance function ensures auditability and reversibility:
+
+\[
+\gamma: \mathcal{T} \times \mathcal{P}aram \times \mathcal{A} \times \mathcal{R} \rightarrow \mathcal{L}
+\]
+
+where $\mathcal{L}$ is the set of audit log entries:
+
+\[
+\ell \in \mathcal{L} = \{\text{id}, \text{timestamp}, \text{actor}, \text{tool}, \text{parameters}, \text{result}, \text{status}\}
+\]
+
+For reversible tools:
+
+\[
+\gamma_{\text{reverse}}(\ell) = \begin{cases}
+\text{rollback}(\ell) & \text{if } \text{reversible}(\ell.\text{tool}) = \text{true} \\
+\text{error}(\text{``irreversible''}) & \text{otherwise}
+\end{cases}
+\]
+
+\subsection{Identity Function}
+
+The identity function maps external identifiers to internal actor representations:
+
+\[
+\lambda: \mathcal{I}_{ext} \times \mathcal{I}_{dev} \rightarrow \mathcal{A}
+\]
+
+where:
+\begin{itemize}
+    \item $\mathcal{I}_{ext}$: External identity (email, phone, user ID)
+    \item $\mathcal{I}_{dev}$: Device identity (BBID)
+\end{itemize}
+
+\[
+\lambda(i_{ext}, i_{dev}) = \{ \text{id}, \text{bbid}, \text{permissions}, \text{session} \}
+\]
+
+\subsection{BBID: BrailleBuddy Identity}
+
+BBID is a device-level identity system that provides persistent recognition across sessions and authentication states. BBID addresses the gap between anonymous device interactions and authenticated user identity.
+
+\textbf{BBID Properties}:
+\begin{itemize}
+    \item \textbf{Device fingerprinting}: Uses browser/device characteristics to generate a stable identifier
+    \item \textbf{Visit tracking}: Records visit count, first visit timestamp, last visit timestamp
+    \item \textbf{Relationship state}: Maintains relationship state (preferred name, interaction history)
+    \item \textbf{Authentication-agnostic}: Works before, during, and after user authentication
+    \item \textbf{Privacy-preserving}: Does not store personally identifiable information in the device fingerprint
+\end{itemize}
+
+\textbf{BBID in PAES}:
+\begin{itemize}
+    \item \textbf{Context injection}: BBID is included in model context to enable relationship-aware responses
+    \item \textbf{Audit attribution}: All tool executions are attributed to both BBID and user ID (if authenticated)
+    \item \textbf{Permission scoping}: Permissions can be scoped to BBID for device-level authorization
+    \item \textbf{Relationship continuity}: Models can maintain relationship state across sessions using BBID
+\end{itemize}
+
+\textbf{BBID vs User Identity}:
+\begin{itemize}
+    \item BBID: Device identity, persistent across sessions, anonymous by default
+    \item User identity: Human identity (email, phone), requires authentication, maps to BBID
+\end{itemize}
+
+The dual identity system (BBID + user) enables PAES to:
+\begin{itemize}
+    \item Provide personalized responses before authentication
+    \item Maintain continuity across authentication boundaries
+    \item Attribute actions to both device and human actors
+    \item Implement device-level policies alongside user-level policies
+\end{itemize}
+
+\subsection{System State Evolution}
+
+The system state evolves through tool executions:
+
+\[
+\mathcal{S}_{t+1} = \mathcal{S}_t \cup \bigcup_{e \in \mathcal{E}_t} \epsilon(e.\text{tool}, e.\text{parameters}, e.\text{actor}).\mathcal{S}'
+\]
+
+where $\mathcal{E}_t$ is the set of executions at time $t$.
+
+\subsection{Safety Properties}
+
+\textbf{Theorem 1 (Permission Safety)}: No tool executes without proper authorization.
+
+\textit{Proof}: By definition of the tool executor $\epsilon$:
+
+\[
+\epsilon(t, p, a) = \begin{cases}
+\text{execute}(t, p, a) & \text{if } \alpha(a, t) = \text{true} \\
+\text{error}(\text{``unauthorized''}) & \text{otherwise}
+\end{cases}
+\]
+
+Thus, for any execution $e \in \mathcal{E}$ where $e.\text{result} \neq \text{error}$, it must be that $\alpha(e.\text{actor}, e.\text{tool}) = \text{true}$. $\square$
+
+\textbf{Theorem 2 (Audit Completeness)}: Every execution is logged.
+
+\textit{Proof}: The compliance function $\gamma$ is invoked for every tool execution:
+
+\[
+\gamma: \mathcal{T} \times \mathcal{P}aram \times \mathcal{A} \times \mathcal{R} \rightarrow \mathcal{L}
+\]
+
+By construction, $\epsilon$ calls $\gamma$ for all executions (both success and failure). Therefore, for every $e \in \mathcal{E}$, there exists $\ell \in \mathcal{L}$ such that $\ell.\text{execution} = e$. $\square$
+
+\textbf{Theorem 3 (Reversibility)}: Reversible tools can be rolled back to original state.
+
+\textit{Proof}: For any reversible tool $t \in \mathcal{T}_{rev}$, there exists an inverse tool $t^{-1} \in \mathcal{T}$ such that:
+
+\[
+t^{-1}(t(p)) = p
+\]
+
+This is enforced by the tool registration system requiring reversible tools to declare their inverse. The rollback function $\gamma_{\text{reverse}}$ verifies reversibility before executing rollback:
+
+\[
+\gamma_{\text{reverse}}(\ell) = \begin{cases}
+\text{rollback}(\ell) & \text{if } \text{reversible}(\ell.\text{tool}) = \text{true} \\
+\text{error}(\text{``irreversible''}) & \text{otherwise}
+\end{cases}
+\]
+
+Thus, reversible tools can restore the system to its pre-execution state. $\square$
+
+\textbf{Corollary 1 (State Consistency)}: If all tools are reversible, the system state can be rolled back to any previous state.
+
+\textit{Proof}: By Theorem 3, each reversible tool execution can be inverted. By composing inverses in reverse order of execution, the system can be rolled back to any prior state $S_t$ from current state $S_{t+n}$:
+
+\[
+S_t = \bigcirc_{i=n}^{1} t_i^{-1}(S_{t+i})
+\]
+
+where $\bigcirc$ denotes function composition. $\square$
+
+\section{Related Work}
+
+\subsection{Function Calling and Tool Use}
+
+OpenAI's function calling, Anthropic's tool use, and similar approaches enable models to invoke external tools through structured interfaces. However, these approaches typically bind models directly to tool execution without intermediate permission checking or audit trails. PAES introduces a governed execution layer between model cognition and tool action, ensuring institutional trust through authorization and compliance.
+
+\subsection{Agentic Frameworks}
+
+LangChain, AutoGPT, and other agentic frameworks enable autonomous agent behavior through tool composition. These frameworks prioritize agent autonomy over institutional compliance. PAES explicitly separates model cognition from system decision-making, ensuring that regulated domains (lending, healthcare, legal) maintain human-in-the-loop oversight through permissioned action.
+
+\subsection{Model Orchestration}
+
+Ray Serve, vLLM, and similar systems focus on model serving and orchestration for performance and scalability. PAES extends model orchestration to include permissioned action execution, adding identity, authorization, and compliance layers beyond mere model routing.
+
+\subsection{Enterprise AI Platforms}
+
+Enterprise AI platforms (DataRobot, C3 AI, etc.) provide model governance and explainability for regulated industries. These platforms typically focus on model lifecycle management rather than action execution governance. PAES complements model governance by governing the actions that models recommend, not just the models themselves.
+
+\subsection{Access Control and Authorization}
+
+OAuth2, RBAC, and ABAC systems provide authorization frameworks for web applications. PAES integrates these authorization patterns with AI-mediated action execution, extending traditional access control to model-driven operations.
+
+\subsection{Audit and Compliance}
+
+SIEM systems, audit logging frameworks, and compliance tools provide retrospective analysis of system events. PAES integrates audit logging into the execution path itself, making compliance a first-class concern rather than an afterthought.
+
+\subsection{Model Context Protocol (MCP)}
+
+The Model Context Protocol (MCP) is an open standard for connecting AI models to external tools and data sources. MCP provides a standardized interface for model-server communication, enabling models to discover and invoke tools through a unified protocol. However, MCP focuses on the technical interface between models and tools, not on the governance layer that sits between them. PAES extends MCP-like tool invocation by adding identity, authorization, and compliance layers that determine \textit{whether} a tool should be invoked, not just \textit{how} to invoke it. PAES can be viewed as a governed implementation of MCP with institutional trust requirements.
+
+\section{Introduction}
+
+The current AI landscape is dominated by frontier model companies competing on model capability, parameter count, and benchmark performance. However, as model capability diffuses through open-source alternatives and competing labs narrow performance gaps, the structural advantages of owning a particular model diminish. This paper argues that the next generation of valuable AI companies will not own cognition itself, but rather the \textit{right to coordinate cognition} within regulated economic systems.
+
+\subsection{The \$100T Company Thesis}
+
+A \$100T AI-era company requires six structural components:
+\begin{enumerate}
+    \item Enormous addressable economic flow
+    \item High automation penetration
+    \item Persistent take rate
+    \item Strong margins
+    \item Durable monopoly/standard status
+    \item Enough trust that institutions let the system act
+\end{enumerate}
+
+Frontier model companies face structural weaknesses that undermine these requirements:
+\begin{itemize}
+    \item \textbf{Model capability diffuses:} Open-source and competing labs narrow gaps over time
+    \item \textbf{High training costs:} Capex intensity crushes margins
+    \item \textbf{User multi-homing:} Enterprises use multiple model providers (OpenAI, Anthropic, Google, Meta, xAI, Mistral)
+    \item \textbf{Rising regulation:} Powerful models attract sovereign scrutiny
+    \item \textbf{Stateless by default:} Real economic action needs memory, authorization, and liability
+    \item \textbf{Commoditizing cognition:} Once ``smart enough,'' trust and integration matter more
+\end{itemize}
+
+The winning position is not ``we trained the smartest model'' but ``every model must pass through us before it can act in the real economy.''
+
+\section{Architecture Overview}
+
+Our architecture implements a model-agnostic execution layer with nine distinct components:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{ll}
+\toprule
+\textbf{Layer} & \textbf{Role} \\
+\midrule
+Frontier models & Cognition engines \\
+Model router & Chooses which model to use for each task \\
+Tool harness & Lets models act safely \\
+Identity layer & Knows who is acting and under what authority \\
+Authorization layer & Determines what actions are permitted \\
+Compliance layer & Enforces law, policy, auditability, reversibility \\
+Memory/context layer & Maintains durable institutional state \\
+Economic rails & Payments, contracts, lending, collections, insurance, procurement \\
+System of record integrations & Banks, CRMs, ERPs, courts, governments, healthcare, payroll, property systems \\
+\bottomrule
+\end{tabular}
+\caption{Architecture layers for permissioned action execution}
+\end{table}
+
+\subsection{The Execution Stack}
+
+\begin{verbatim}
+OpenAI + Anthropic + Google + Meta + Mistral + local models + domain models
+                     ↓
+        model router / arbitration layer
+                     ↓
+        deterministic tool harness
+                     ↓
+ identity + permission + compliance + audit graph
+                     ↓
+        real-world economic execution
+\end{verbatim}
+
+\section{Tool Harness Implementation}
+
+The tool harness serves as the critical boundary between model cognition and real-world action. It implements bash-like tool algebra with four core primitives: \texttt{create}, \texttt{exec}, \texttt{read}, and \texttt{help}.
+
+\subsection{Tool Registration}
+
+Each tool is registered with:
+\begin{itemize}
+    \item Name and description
+    \item JSON Schema parameter validation
+    \item Required permission scopes
+    \item Reversibility flag
+    \item Dangerous operation flag
+\end{itemize}
+
+\subsection{Default Primitives}
+
+\textbf{create}: Creates new resources (files, directories, database records). Reversible by design.
+
+\textbf{exec}: Executes commands or operations. Includes safety checks to block dangerous commands (rm, dd, mkfs, format, del, erase). Non-reversible by default.
+
+\textbf{read}: Reads resources (files, records, system state). Non-reversible, read-only.
+
+\textbf{help}: Lists available tools or provides documentation for specific tools. Non-reversible.
+
+\subsection{Execution Flow}
+
+\begin{enumerate}
+    \item Model requests tool execution via structured call
+    \item Tool harness validates parameters against JSON Schema
+    \item Authorization layer checks user permissions
+    \item Tool executes with actor context (BBID, user ID, session)
+    \item Result returned to model
+    \item Audit log records execution with sanitized result
+    \item Execution history maintained for traceability
+\end{enumerate}
+
+\section{Permission, Authorization, and Compliance}
+
+\subsection{Identity Layer}
+
+The identity layer combines:
+\begin{itemize}
+    \item \textbf{BBID (BrailleBuddy Identity)}: Device recognition and persistent identity
+    \item \textbf{User authentication}: Email or phone with password verification
+    \item \textbf{Session tokens}: HMAC-signed with expiry and scopes
+\end{itemize}
+
+Every tool execution is attributed to a specific actor with both BBID and user ID.
+
+\subsection{Authorization Layer}
+
+Tools declare required permission scopes (e.g., \texttt{tools:create}, \texttt{tools:exec}, \texttt{tools:read}). The authorization layer:
+\begin{itemize}
+    \item Validates session tokens
+    \item Checks scope permissions before execution
+    \item Enforces least-privilege access
+\end{itemize}
+
+\subsection{Compliance Layer}
+
+The compliance layer ensures institutional trust through:
+\begin{itemize}
+    \item \textbf{Audit trails}: Every tool execution logged with timestamp, actor, parameters, and result
+    \item \textbf{Chain verification}: Audit events are cryptographically linked to prevent tampering
+    \item \textbf{Result sanitization}: Sensitive data (passwords, tokens, secrets) redacted from logs
+    \item \textbf{Reversibility metadata}: Tools marked as reversible enable rollback operations
+    \item \textbf{Adverse-action logic}: For regulated decisions (lending, screening), system enforces explainability and dispute handling
+\end{itemize}
+
+\section{Model Integration}
+
+\subsection{Model Router}
+
+The model router implements:
+\begin{itemize}
+    \item \textbf{Local model racing}: Multiple Ollama models compete for fastest response
+    \item \textbf{Hybrid mode}: Local models race against cloud models (OpenRouter free tier)
+    \item \textbf{Response braiding}: Multiple model responses synthesized into coherent output
+    \item \textbf{Caching}: Identical prompts return cached responses with background quality improvement
+\end{itemize}
+
+\subsection{Context Injection}
+
+Models receive rich context including:
+\begin{itemize}
+    \item System identity and capabilities
+    \item User authentication state
+    \item BBID visit history and relationship state
+    \item Available tools and their schemas
+    \item Primitive list: auth, webhooks, money, tools
+    \item Conversation history
+\end{itemize}
+
+\subsection{Tool Calling Protocol}
+
+Models are instructed to:
+\begin{enumerate}
+    \item Inform user before tool execution
+    \item Describe intended action clearly
+    \item System handles actual execution
+    \item Model receives result and continues
+\end{enumerate}
+
+This separation ensures models recommend but systems decide.
+
+\section{Economic Rails Integration}
+
+The architecture includes primitive economic services:
+\begin{itemize}
+    \item \textbf{Money service}: Accounts, balances, immutable double-entry ledger
+    \item \textbf{Webhooks}: Event dispatch to external systems
+    \item \textbf{Idempotency}: Prevent duplicate transactions
+\end{itemize}
+
+These primitives enable autonomous economic actions (payments, transfers) within the permissioned framework.
+
+\section{Use Cases}
+
+\subsection{Lending Underwriting}
+
+In lending underwriting, models can recommend credit decisions but regulated systems must execute them. PAES enables:
+
+\begin{itemize}
+    \item Models analyze financial and behavioral data to recommend approval/denial
+    \item Tool harness executes credit decision through permissioned `create` tool (creates loan record)
+    \item Authorization layer ensures only underwriters with proper scopes can execute
+    \item Compliance layer logs adverse-action notices, explanation requirements, and regulatory constraints
+    \item Audit trail provides evidence for fair lending compliance and dispute resolution
+\end{itemize}
+
+The separation ensures models provide cognitive analysis while the system enforces regulatory requirements (ECOA, FCRA, Dodd-Frank).
+
+\subsection{Healthcare Decision Support}
+
+In healthcare, AI models can recommend treatment options but clinical systems must authorize interventions:
+
+\begin{itemize}
+    \item Models analyze patient data to suggest treatment plans
+    \item Tool harness executes through permissioned `exec` tool (creates orders, updates records)
+    \item Authorization layer requires clinician credentials and scope-based access
+    \item Compliance layer enforces HIPAA privacy, consent requirements, and jurisdiction-specific regulations
+    \item Audit trail supports clinical governance and medical-legal accountability
+\end{itemize}
+
+The architecture ensures AI augments clinical judgment without bypassing human oversight or regulatory safeguards.
+
+\subsection{Legal Document Automation}
+
+In legal workflows, models can draft documents but attorney systems must finalize and file:
+
+\begin{itemize}
+    \item Models generate contract clauses, briefs, or filings from case facts
+    \item Tool harness executes through permissioned `create` and `exec` tools (document generation, filing)
+    \item Authorization layer requires attorney credentials and matter-specific permissions
+    \item Compliance layer enforces jurisdiction-specific filing requirements, privilege protections, and ethical rules
+    \item Audit trail supports attorney responsibility and malpractice defense
+\end{itemize}
+
+The separation ensures AI accelerates legal work while maintaining attorney accountability and ethical compliance.
+
+\section{Discussion}
+
+\subsection{The Trust Moat}
+
+The durable competitive advantage is:
+\begin{quote}
+``Institutions trust our agents to act.''
+\end{quote}
+
+Once banks, governments, hospitals, insurers, courts, employers, and platforms wire into the authorization/execution graph, the system provides not just intelligence but \textit{institutional agency}. This is a harder wedge to dislodge than ``smarter predictions.''
+
+\subsection{Comparison to Existing Platforms}
+
+Our position is analogous to:
+\begin{itemize}
+    \item \textbf{Visa/Mastercard}: For payments
+    \item \textbf{AWS}: For compute
+    \item \textbf{Apple}: For mobile distribution
+    \item \textbf{Bloomberg}: For financial terminals
+    \item \textbf{Salesforce}: For enterprise customer state
+\end{itemize}
+
+But across \textbf{autonomous action} rather than a single domain.
+
+\subsection{Key Insight}
+
+Frontier models may become like CPUs: critical, expensive, powerful—but not the highest-control layer. The highest-control layer decides:
+\begin{quote}
+Which compute runs, under whose authority, against what data, with what permissions, producing what action, with what liability.
+\end{quote}
+
+That is not ``a model.'' That is a \textbf{governed operating system}.
+
+\subsection{Salus-Style Thinking}
+
+In regulated domains (lending, collections, identity verification, tenant screening, insurance, healthcare, payroll, benefits, legal workflows):
+\begin{quote}
+Models can recommend; regulated systems must decide.
+\end{quote}
+
+The system needs adverse-action logic, audit trails, consent, authorization, dispute handling, explainability, reversibility, and jurisdiction-specific constraints.
+
+\section{Interactive Demonstration}
+
+An interactive HTML demonstration of the PAES architecture is available at \texttt{demo.html}. This demonstration showcases:
+
+\begin{itemize}
+    \item Tool harness primitives (create, exec, read, help)
+    \item Bang-for-buck model champions with cost-performance metrics
+    \item Architecture layer visualization
+    \item Mathematical formalization of PAES
+    \item BBID identity system overview
+    \item Iterative braiding process
+    \item Use case examples (lending, healthcare, legal)
+\end{itemize}
+
+The demonstration provides a visual, interactive overview of the system architecture and can be opened in any modern web browser. It serves as a companion to this whitepaper, offering a more accessible introduction to the PAES concepts.
+
+\section{Conclusion}
+
+We have presented a model-agnostic execution architecture that implements the ``permissioned action'' thesis for AI-mediated economic systems. By separating cognition from consequence through a tool harness with rigorous permission checking, audit logging, and compliance enforcement, we create a durable position that survives model commoditization.
+
+The architecture's moat is institutional trust, not model intelligence. As frontier models become interchangeable cognition providers, the system that coordinates their action with proper identity, authorization, and compliance becomes the neutral execution substrate for agentic capitalism.
+
+\subsection{Future Work}
+
+\begin{itemize}
+    \item Implement actual filesystem and database operations in tool handlers
+    \item Add sandboxed command execution with proper isolation
+    \item Implement reversible tool rollback mechanisms
+    \item Add jurisdiction-specific policy enforcement
+    \item Integrate with real banking and payment systems
+    \item Implement adverse-action logic for regulated decisions
+    \item Add multi-tenant isolation and governance
+\end{itemize}
+
+\section{References}
+
+\begin{thebibliography}{9}
+
+\bibitem{openai-functions}
+OpenAI. ``Function Calling.'' OpenAI API Documentation, 2023.
+
+\bibitem{anthropic-tools}
+Anthropic. ``Tool Use.'' Claude API Documentation, 2024.
+
+\bibitem{langchain}
+LangChain. ``LangChain: A Framework for Developing Applications Powered by Language Models.'' 2023.
+
+\bibitem{autogpt}
+Significant Gravitas. ``Auto-GPT: An Autonomous GPT-4 Experiment.'' 2023.
+
+\bibitem{ray-serve}
+Ray. ``Ray Serve: Scalable and Programmable Serving.'' 2023.
+
+\bibitem{vllm}
+vLLM Team. ``vLLM: Easy, Fast, and Cheap LLM Serving.'' 2023.
+
+\bibitem{datarobot}
+DataRobot. ``Enterprise AI Platform.'' 2024.
+
+\bibitem{oauth2}
+Hardt, D. ``The OAuth 2.0 Authorization Framework.'' RFC 6749, 2012.
+
+\bibitem{rbac}
+Sandhu, R. S., Coyne, E. J., Feinstein, H. L., \& Youman, C. E. ``Role-Based Access Control Models.'' IEEE Computer, 1996.
+
+\bibitem{hipaa}
+U.S. Department of Health and Human Services. ``Health Insurance Portability and Accountability Act (HIPAA).'' 1996.
+
+\bibitem{ecoa}
+Equal Credit Opportunity Act, 15 U.S.C. § 1691, 1974.
+
+\bibitem{fcra}
+Fair Credit Reporting Act, 15 U.S.C. § 1681, 1970.
+
+\end{thebibliography}
+
+\end{document}

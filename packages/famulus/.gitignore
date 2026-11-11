@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.coverage
+.coverage.*
+.pytest_cache/
+.venv/
+venv/
+.eggs/
+build/
+dist/
+
+# Engine runtime state (local, machine-specific, possibly sensitive)
+logs/
+config/discovered_system.json
+config/routing_memory.db
+config/consent_ledger.db
+config/profile.json
+config/cache/
+
+# OS
+.DS_Store

@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>aCBL Theory — Codebook Inference and Cerebellar Computation</title>
+  <meta name="description" content="Theoretical foundations of the artificial Cerebellar Braille Loop (aCBL): codebook inference, 6-dot vs 8-dot braille, granule cell parallels, and comprehension-guided touch.">
+  <meta name="keywords" content="artificial cerebellar braille loop, aCBL, codebook inference, braille decoding, cerebellar computation, predictive coding, granule cells, k-means clustering, sensorimotor language">
+  <meta name="author" content="Ryan Barrett">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
+
+  <script>
+    MathJax = {
+      tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: #0e1117;
+      color: #e0e0e0;
+      line-height: 1.75;
+      padding: 2rem;
+    }
+    .container { max-width: 780px; margin: 0 auto; }
+    nav {
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid #222;
+      display: flex;
+      gap: 1.5rem;
+      align-items: center;
+    }
+    nav a {
+      color: #888;
+      text-decoration: none;
+      font-size: 0.85rem;
+      transition: color 0.2s;
+    }
+    nav a:hover { color: #ff6b6b; }
+    nav .brand { font-size: 1.1rem; color: #ccc; }
+    h1 {
+      font-size: 2rem;
+      color: #fafafa;
+      margin: 1.5rem 0 0.5rem;
+    }
+    h2 {
+      font-size: 1.5rem;
+      color: #fafafa;
+      margin: 2.5rem 0 0.8rem;
+      padding-top: 1rem;
+      border-top: 1px solid #1a1d24;
+    }
+    h3 {
+      font-size: 1.2rem;
+      color: #ddd;
+      margin: 2rem 0 0.6rem;
+    }
+    h4 {
+      font-size: 1rem;
+      color: #bbb;
+      margin: 1.5rem 0 0.5rem;
+    }
+    p { margin: 0.8rem 0; color: #ccc; }
+    strong { color: #e8e8e8; }
+    em { color: #bbb; }
+    a { color: #ff6b6b; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code {
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      background: #1a1d24;
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      font-size: 0.9em;
+      color: #e0e0e0;
+    }
+    pre {
+      background: #1a1d24;
+      border: 1px solid #2a2d34;
+      border-radius: 8px;
+      padding: 1.2rem;
+      overflow-x: auto;
+      margin: 1rem 0;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+    pre code { background: none; padding: 0; }
+    .math-block {
+      background: #1a1d24;
+      border: 1px solid #2a2d34;
+      border-radius: 8px;
+      padding: 1rem 1.2rem;
+      margin: 1.2rem 0;
+      overflow-x: auto;
+      text-align: center;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.2rem 0;
+      font-size: 0.9rem;
+    }
+    th {
+      background: #1a1d24;
+      color: #ccc;
+      text-align: left;
+      padding: 0.6rem 0.8rem;
+      border: 1px solid #2a2d34;
+      font-weight: 600;
+    }
+    td {
+      padding: 0.5rem 0.8rem;
+      border: 1px solid #1e2128;
+      color: #aaa;
+    }
+    tr:nth-child(even) { background: #12151a; }
+    ul, ol {
+      margin: 0.8rem 0 0.8rem 1.5rem;
+      color: #bbb;
+    }
+    li { margin: 0.3rem 0; }
+    .braille-example {
+      font-size: 1.6rem;
+      letter-spacing: 3px;
+      color: #ff6b6b;
+    }
+    blockquote {
+      border-left: 3px solid #ff3c3c;
+      padding: 0.5rem 1rem;
+      margin: 1rem 0;
+      color: #999;
+      background: #12151a;
+      border-radius: 0 6px 6px 0;
+    }
+    .cite {
+      margin-top: 3rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid #222;
+      font-size: 0.8rem;
+      color: #555;
+    }
+    .cite a { color: #666; }
+    mjx-container { color: #ddd !important; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav>
+      <span class="brand">🧠 aCBL</span>
+      <a href="index.html">Home</a>
+      <a href="theory.html" style="color:#ff6b6b;">Theory</a>
+      <a href="https://github.com/elevate-foundry/artificial-cerebellar-loop">GitHub</a>
+      <a href="https://artificial-cerebellar-loop.streamlit.app/">Try it live</a>
+    </nav>
+
+    <h1>Codebook Inference and Cerebellar Computation</h1>
+    <p>Theoretical foundations of the artificial Cerebellar Braille Loop (aCBL).</p>
+
+    <!-- Opening -->
+    <p>A person who spoke <strong>all languages</strong> would not "see" German braille versus English braille from the cell alone. They would infer it from <strong>code context</strong>, the same way you infer whether <code>gift</code> means a present in English or poison in German.</p>
+
+    <p>A braille cell is not intrinsically English or German. It is a symbol inside a <strong>codebook</strong>.</p>
+
+    <div class="math-block">$$\text{meaning} = \text{cell pattern} + \text{language code} + \text{context}$$</div>
+
+    <!-- The key point -->
+    <h2>The key point</h2>
+
+    <p>The six-dot braille cell is only a physical/bit substrate:</p>
+    <div class="math-block">$$b_6 \in \{0,1\}^6$$</div>
+
+    <p>But braille Unicode (U+2800–U+28FF) uses <strong>eight dots</strong>, expanding the cell to:</p>
+    <div class="math-block">$$b_8 \in \{0,1\}^8$$</div>
+
+    <p>This is not merely a larger encoding — it changes the structure of the codebook inference problem.</p>
+
+    <h3>6-dot vs 8-dot</h3>
+    <table>
+      <tr><th>Property</th><th>6-dot</th><th>8-dot</th></tr>
+      <tr><td>Cell space</td><td>$2^6 = 64$</td><td>$2^8 = 256$</td></tr>
+      <tr><td>Standards</td><td>UEB, SEB, Deutsche Blindenschrift</td><td>Computer braille, Unicode braille</td></tr>
+      <tr><td>Mode switching</td><td>Required (capital, number, letter modes)</td><td>Reduced or eliminated</td></tr>
+      <tr><td>State machine</td><td>$q_t = (\ell_t, \text{mode}_t)$ — complex</td><td>$q_t \approx \ell_t$ — simpler</td></tr>
+      <tr><td>Contraction ambiguity</td><td>High — cells overloaded by mode</td><td>Lower — more cells available</td></tr>
+      <tr><td>Codebook families</td><td>Literary braille codes</td><td>Computer/Unicode braille codes</td></tr>
+    </table>
+
+    <p>In 6-dot braille, a single cell like <code class="braille-example">⠼</code> might mean "number follows" — it is a <strong>mode indicator</strong>, not content. The same cell has no such role in 8-dot computer braille, where dots 7 and 8 directly encode case and type information.</p>
+
+    <p>The decoder generalizes to:</p>
+    <div class="math-block">$$D_\ell^{(n)} : \mathbb{B}^{n*} \to \Sigma_\ell^* \quad \text{where } n \in \{6, 8\}$$</div>
+
+    <p>The codebook $D_\ell^{(8)}$ is not simply $D_\ell^{(6)}$ with two extra bits. It is a <strong>different codebook family</strong> — the mapping from cells to characters changes, the mode structure collapses, and the prior $P(\ell)$ shifts because 8-dot braille is predominantly used in computing contexts where language-specific literary conventions are less relevant.</p>
+
+    <!-- Why 8-dot -->
+    <h3>Why 8-dot braille?</h3>
+
+    <p>The biological cerebellum activates during braille reading — specifically Crus I, lobules IV/V, and VIIIA (<a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6872089/">Guell et al., 2019</a>). It performs <strong>predictive error minimization on tactile sequences</strong>: finger moves → predict next dot pattern → compare actual sensation → adjust motor policy.</p>
+
+    <p>This is not just a metaphor. Hogri et al. (2015) demonstrated a <strong>neuro-inspired closed-loop cerebellar prosthesis</strong> — a synthetic chip that substitutes cerebellar learning functions in vivo, interfacing directly with cerebellar inputs (pontine nuclei) and outputs (deep cerebellar nuclei) to restore conditioned responses (<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC4327125/">Hogri et al., 2015</a>). Their architecture implements the same loop: sensory input → model-based prediction → error signal → weight update → motor output. The aCBL operates at a different substrate — language models instead of silicon neurons, braille codebooks instead of conditioned eyeblink — but the control architecture is the same: a closed-loop system where an artificial model substitutes for cerebellar predictive computation.</p>
+
+    <p>The aCBL mirrors this loop, but the choice of <strong>8-dot</strong> over 6-dot is not cosmetic — it is what makes the codebook inference problem non-trivial.</p>
+
+    <p><strong>6-dot is too constrained.</strong> With only $2^6 = 64$ cells, the encoding strategy is largely dictated by the standard. Models must use mode indicators (number sign, capital sign) and contractions. There is little room for strategic divergence — the "right" codebook is mostly predetermined.</p>
+
+    <p><strong>8-dot creates a genuine strategy space.</strong> With $2^8 = 256$ cells, models face real choices:</p>
+    <ul>
+      <li>Use dots 7–8 for case directly, or use a prefix cell?</li>
+      <li>Pack everything into single cells ($k=1$), or use variable-length n-grams?</li>
+      <li>Follow 6-dot conventions in the 8-dot space, or exploit the full cell?</li>
+    </ul>
+
+    <p>This mirrors what the cerebellum does in biology. It does not identify letters — it optimizes the <strong>policy</strong> for reading: scan speed, finger pressure, rescan decisions, contraction expansion strategy. The cerebellum operates on the <em>how</em>, not the <em>what</em>.</p>
+
+    <p>In the aCBL, the "how" is the codebook structure itself. The prediction target is not just "what text does this encode?" but "what encoding strategy is being used?" — which codebook family, which n-gram length $k$, which use of the expanded cell space. That is why 8-dot braille is essential: it gives the loop something to converge <em>on</em>.</p>
+
+    <!-- Unified loop -->
+    <h3>The unified loop: comprehension-guided touch</h3>
+
+    <p>The Hogri et al. prosthesis and the aCBL each implement half of what the biological cerebellum does during braille reading. Combined, they close the full loop — from finger to meaning and back.</p>
+
+    <p><strong>Layer 1: Physical (Hogri-type).</strong> A prosthetic controller reads a braille surface. It predicts the next dot pattern from motor commands ($\hat{o}_{t+1} = M(s_t, a_t)$), compares the prediction against actual tactile input, and adjusts the scan trajectory — finger speed, pressure, position — to minimize sensory prediction error.</p>
+
+    <p><strong>Layer 2: Symbolic (aCBL).</strong> Multiple models receive the dot stream, each inferring codebook, language, and text. Disagreement between models produces a codebook divergence signal. The braided feedback loop drives models toward consensus on encoding strategy.</p>
+
+    <p><strong>The critical bridge: Layer 2 talks back to Layer 1.</strong> When the symbolic layer detects codebook ambiguity — two clusters of models disagree on whether a cell is a capital indicator or a letter — it sends a signal to the physical layer: <em>rescan this cell</em>. The motor policy changes because the <em>meaning</em> is uncertain, not just the sensation.</p>
+
+    <div class="math-block">$$a_{t+1} = \pi(s_t, o_t, c_t, e_t^{\text{motor}}, e_t^{\text{codebook}})$$</div>
+
+    <p>where $e_t^{\text{motor}}$ is the tactile prediction error (Hogri) and $e_t^{\text{codebook}}$ is the codebook divergence signal (aCBL).</p>
+
+    <p>This is what the biological cerebellum actually does. A skilled braille reader does not scan uniformly — they slow down at ambiguous contractions, rescan unfamiliar words, skip ahead on predictable sequences. The motor policy is shaped by comprehension, and comprehension is shaped by the motor policy. One loop, two layers.</p>
+
+    <p>No existing AI system has this property:</p>
+
+    <table>
+      <tr><th>System</th><th>Physical loop</th><th>Symbolic loop</th><th>Cross-layer feedback</th></tr>
+      <tr><td>Vision models</td><td>—</td><td>✓ (pixels → text)</td><td>—</td></tr>
+      <tr><td>Robotic touch</td><td>✓ (force → motor)</td><td>—</td><td>—</td></tr>
+      <tr><td>Hogri et al.</td><td>✓ (cerebellar chip)</td><td>—</td><td>—</td></tr>
+      <tr><td>aCBL</td><td>—</td><td>✓ (braille → codebook)</td><td>—</td></tr>
+      <tr><td><strong>Unified aCBL</strong></td><td><strong>✓</strong></td><td><strong>✓</strong></td><td><strong>✓</strong></td></tr>
+    </table>
+
+    <p>The unified architecture would be the first system where <strong>touch is guided by understanding and understanding is grounded in touch</strong> — a closed sensorimotor-semantic loop with a shared cerebellar controller at both levels.</p>
+
+    <!-- Granule cells -->
+    <h3>Granule cells and k-means: the same operation</h3>
+
+    <p>The cerebellum's computational core is the <strong>granule cell layer</strong> — ~69 billion neurons, roughly 80% of all neurons in the brain. Their function is pattern separation: they take a relatively low-dimensional input (mossy fibers from pontine nuclei) and project it into an enormously high-dimensional sparse representation, making similar inputs distinguishable so that Purkinje cells can learn precise input-output mappings.</p>
+
+    <p>The aCBL's codebook clustering performs a structurally analogous operation using <strong>k-means</strong> on dot-level similarity:</p>
+
+    <table>
+      <tr><th>Cerebellar microcircuit</th><th>aCBL</th></tr>
+      <tr><td>Mossy fiber inputs</td><td>Raw braille outputs from 16 models</td></tr>
+      <tr><td>Granule cell expansion</td><td>Dot-level feature extraction (8 binary dots per cell → pairwise similarity matrix)</td></tr>
+      <tr><td>Purkinje cell classification</td><td>K-means clustering → discovered codebook families</td></tr>
+      <tr><td>Climbing fiber error signal</td><td>Divergence between clusters (inter-cluster distance)</td></tr>
+      <tr><td>Learned motor output</td><td>Consensus BBID</td></tr>
+    </table>
+
+    <p>The parallel is not superficial. Both systems solve the same problem: given multiple noisy representations of the same underlying signal, <strong>separate them into distinct strategies and select the best one through error-driven feedback</strong>.</p>
+
+    <p>The cerebellar microcircuit is famously uniform — the same small circuit repeated across the entire structure. Its power comes not from architectural complexity but from <strong>scale × repetition × error signal</strong>. K-means is similarly simple. It is the repetition (iterative reassignment) and the error signal (within-cluster variance) that produce structure from noise.</p>
+
+    <h4>Current limitation and future direction</h4>
+
+    <p>In the current aCBL, k-means runs <strong>once</strong> after the handshake completes — it clusters the final braille outputs. The biological cerebellum runs its pattern separation <strong>continuously</strong>, updating with every error signal.</p>
+
+    <p>A more cerebellar implementation would re-cluster after each feedback round and use <strong>cluster migration</strong> as an additional convergence signal:</p>
+
+    <div class="math-block">$$\Delta_t = \sum_{m} \mathbb{1}[c_t(m) \neq c_{t-1}(m)]$$</div>
+
+    <p>where $c_t(m)$ is the cluster assignment of model $m$ at round $t$. When $\Delta_t = 0$ — no model changes cluster — the codebook structure has stabilized. This is analogous to the point where cerebellar prediction error drops below threshold and the motor program is "learned."</p>
+
+    <!-- 80/20 -->
+    <h3>The 80/20 split: calibration vs generalization</h3>
+
+    <p>The brain allocates ~80% of its neurons to the cerebellum and ~20% to the cortex. This ratio is evolution's answer to a design question: <strong>how much of intelligence is getting it roughly right vs getting it exactly right?</strong></p>
+
+    <p>The cortex generalizes — "cats have four legs." The cerebellum calibrates — "this cat, at this angle, catch it with <em>this</em> trajectory, at <em>this</em> moment." Without calibration, general knowledge is inert. Without generalization, calibration has nothing to calibrate.</p>
+
+    <p>Current AI is cortex-only. Transformers generalize but cannot calibrate — they produce approximately correct outputs with no error-driven refinement loop. The aCBL is the cerebellar complement: it takes 16 models' "approximately right" braille and calibrates them into a precise codebook through error-driven consensus.</p>
+
+    <div class="math-block">$$\text{Intelligence} \neq \text{generalization alone} \implies \text{Intelligence} \supset \text{cerebellar calibration loop}$$</div>
+
+    <p>The aCBL addresses the 80% of the computational budget that current architectures leave on the table.</p>
+
+    <!-- Observed divergence -->
+    <h3>Observed codebook divergence</h3>
+
+    <p>The aCBL operates in 8-dot Unicode braille. When models disagree on encoding strategy, the divergence is specifically about how to use the expanded $2^8$ cell space:</p>
+    <ul>
+      <li>Some models use dots 7–8 for case (capital indicator in dot 7)</li>
+      <li>Some prepend a grade-1 indicator (<code class="braille-example">⠰</code>) before the name — a 6-dot convention carried into 8-dot</li>
+      <li>Some ignore dots 7–8 entirely and produce 6-dot-compatible output</li>
+    </ul>
+
+    <p>These are distinct codebooks within the 8-dot family. The codebook clustering in the BBID handshake detects exactly this: which models chose which strategy for the expanded cell space.</p>
+
+    <!-- Beyond 2^8 -->
+    <h3>Beyond $2^8$: effective codebook size</h3>
+
+    <p>A single 8-dot braille cell has exactly $2^8 = 256$ possible patterns (Unicode U+2800–U+28FF). But the <strong>effective codebook</strong> operates over sequences, not individual cells.</p>
+
+    <p>A model that prepends <code class="braille-example">⠐</code> (dots 5) before <code class="braille-example">⠗⠽⠁⠝</code> is not using a 256-symbol alphabet — it is using a codebook over <strong>cell n-grams</strong>:</p>
+
+    <div class="math-block">$$\mathcal{C}_k = \mathbb{B}^{8k} \quad \Rightarrow \quad |\mathcal{C}_k| = 2^{8k}$$</div>
+
+    <table>
+      <tr><th>n-gram length $k$</th><th>Effective codebook size</th><th>Example</th></tr>
+      <tr><td>1</td><td>$2^8 = 256$</td><td>Single cell: <code class="braille-example">⠗</code> → r</td></tr>
+      <tr><td>2</td><td>$2^{16} = 65{,}536$</td><td>Modifier + cell: <code class="braille-example">⠐⠗</code> → capital R</td></tr>
+      <tr><td>3</td><td>$2^{24} \approx 16.7\text{M}$</td><td>Indicator + digraph: <code class="braille-example">⠼⠁⠃</code> → 1b</td></tr>
+    </table>
+
+    <p>In practice, braille codebooks use <strong>variable-length</strong> units — some cells are content, some are modifiers that change the interpretation of subsequent cells. The effective codebook is not $\mathcal{C}_k$ for fixed $k$, but a prefix-free code:</p>
+
+    <div class="math-block">$$\mathcal{C}^* = \bigcup_{k=1}^{K} \mathcal{C}_k$$</div>
+
+    <p>This is exactly where model disagreement arises. Two models may agree on which cell maps to which letter ($k=1$), but disagree on whether a capital indicator should be a separate prefix cell ($k=2$) or encoded in dots 7–8 of the letter cell itself ($k=1$ with a larger per-cell alphabet). Both are valid 8-dot codebooks, but they have different effective sizes and different $k$ distributions.</p>
+
+    <p>The aCBL's codebook clustering captures this: models in the same cluster share not just the same cell-to-character mapping, but the same <strong>n-gram structure</strong> — the same $k$.</p>
+
+    <!-- Interpretation function -->
+    <h2>How the reader disambiguates</h2>
+
+    <p>For both cell sizes, the interpretation is a function:</p>
+    <div class="math-block">$$D_\ell^{(n)} : \mathbb{B}^{n*} \to \Sigma_\ell^*$$</div>
+
+    <p>where:</p>
+    <div class="math-block">$$\ell \in \{\mathrm{English}, \mathrm{German}, \mathrm{French}, \ldots\}$$</div>
+
+    <p>So the same braille stream $(y)$ may decode differently under different language codes:</p>
+    <div class="math-block">$$D_{\mathrm{en}}(y) \neq D_{\mathrm{de}}(y)$$</div>
+
+    <p>A universal multilingual reader would infer the intended code by maximizing posterior likelihood:</p>
+    <div class="math-block">$$\hat{\ell} = \operatorname*{argmax}_{\ell \in L} P(\ell \mid y)$$</div>
+
+    <p>By Bayes:</p>
+    <div class="math-block">$$\hat{\ell} = \operatorname*{argmax}_{\ell \in L} P(y \mid \ell) P(\ell)$$</div>
+
+    <p>Where $P(y \mid \ell)$ means: "How plausible is this braille stream if generated by English braille rules versus German braille rules?"</p>
+
+    <h3>1. Declared context</h3>
+    <p>The strongest signal is external metadata. In practice:</p>
+    <div class="math-block">$$P(\ell \mid y, \text{metadata}) \gg P(\ell \mid y)$$</div>
+
+    <h3>2. Code-switch indicators</h3>
+    <p>The decoding state is not just language; it is a finite-state machine:</p>
+    <div class="math-block">$$q_t = (\ell_t, \text{mode}_t)$$</div>
+    <p>where mode includes: letter mode, number mode, capital mode, contracted mode, foreign-code mode.</p>
+
+    <h3>3. Statistical language evidence</h3>
+    <p>Decode the same stream under both codebooks:</p>
+    <div class="math-block">$$x_{\mathrm{en}} = D_{\mathrm{en}}(y) \qquad x_{\mathrm{de}} = D_{\mathrm{de}}(y)$$</div>
+    <p>Then choose the one that produces more plausible language:</p>
+    <div class="math-block">$$\hat{\ell} = \operatorname*{argmax}_{\ell} P_{\mathrm{LM},\ell}(D_\ell(y))$$</div>
+    <p>where $P_{\mathrm{LM},\ell}$ is a language model for English, German, etc.</p>
+
+    <h3>4. Contraction behavior</h3>
+    <p>The biggest discriminator. In contracted braille, cells can mean different things across languages. German has contractions like ch, sch, st, ei, ie, au, eu. English UEB has its own contraction system (<a href="https://iceb.org/publications/ueb/">ICEB</a>).</p>
+
+    <!-- Complete decoder -->
+    <h2>The complete decoder</h2>
+
+    <p>A universal braille reader is not doing $y \to x$. They are doing:</p>
+    <div class="math-block">$$(y, c) \to (\ell, x)$$</div>
+    <p>where $c$ is context. More completely:</p>
+    <div class="math-block">$$(\hat{\ell}, \hat{x}) = \operatorname*{argmax}_{\ell \in L,\ x \in \Sigma_\ell^*} P(x, \ell \mid y, c)$$</div>
+    <p>Equivalently:</p>
+    <div class="math-block">$$(\hat{\ell}, \hat{x}) = \operatorname*{argmax}_{\ell, x} P(y \mid x, \ell) \cdot P(x \mid \ell) \cdot P(\ell \mid c)$$</div>
+
+    <p>That is the mathematically correct answer.</p>
+
+    <blockquote>
+      <strong>They discern it the same way a cryptanalyst or language model would: not from the cell pattern alone, but from code-switch markers, document context, and which language-specific decoding produces coherent text.</strong>
+    </blockquote>
+
+    <!-- Citations -->
+    <div class="cite">
+      <p><strong>References</strong></p>
+      <p>Guell, X. et al. (2019). Functional gradients of the cerebellum. <a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6872089/">PMC6872089</a></p>
+      <p>Hogri, R. et al. (2015). A neuro-inspired model-based closed-loop neuroprosthesis for the substitution of a cerebellar learning function. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC4327125/">PMC4327125</a></p>
+      <p><a href="https://www.nationalbraille.org/wp-content/uploads/2021/05/Overview-of-Foreign-Language-Transcription.pdf">National Braille Association — Foreign Language Transcription</a></p>
+      <p><a href="https://iceb.org/publications/ueb/">ICEB — Unified English Braille</a></p>
+      <p style="margin-top: 1rem;">Barrett, R. (2025). <em>Cerebellar Braille Loop: Predictive Tactile Control over a Language-Conditioned Braille Stream.</em></p>
+    </div>
+  </div>
+</body>
+</html>

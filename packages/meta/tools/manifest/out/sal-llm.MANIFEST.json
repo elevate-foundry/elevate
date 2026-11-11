@@ -1,0 +1,66 @@
+{
+  "spec": "BIFM-MANIFEST/1.0",
+  "repo": "sal-llm",
+  "owner": "elevate-foundry",
+  "generatedAt": "2026-06-10T03:59:10.579Z",
+  "topology": {
+    "org": "https://github.com/elevate-foundry",
+    "index": "CONSTELLATION.md",
+    "peers": [
+      "New-project",
+      "ai-native-ide",
+      "artificial-cerebellar-loop",
+      "bbid-challenge",
+      "bbid-spec",
+      "black-box",
+      "braille",
+      "braille-frontier-poc",
+      "braille-mcp",
+      "braille-multimodal-substrate",
+      "braille-space-agi",
+      "data-moat-thesis",
+      "dynworker",
+      "embodied-intelligence-ai",
+      "frontier-llm",
+      "ghost-qa",
+      "gods-as-centroids",
+      "hilbert-ide",
+      "lm-training-infra",
+      "modulo8-semantic-compression",
+      "pluribus",
+      "pluribus-swarm",
+      "qwen-agent",
+      "sal-auth",
+      "sal-voice",
+      "salutations",
+      "speculative-agent",
+      "tool-algebra-plugin"
+    ]
+  },
+  "state": {
+    "commits": 2,
+    "createdAt": "2025-12-18T01:41:34Z",
+    "pushedAt": "2025-12-18T02:01:20Z",
+    "language": "Python",
+    "bifm256": {
+      "byte": 34,
+      "cell": "⠢",
+      "kappa": 1,
+      "sigma": 0,
+      "delta": 2,
+      "words": "minor change, static volatility, drifting drift"
+    }
+  },
+  "terms": {
+    "license": "see LICENSE",
+    "aiTraining": "contact-required",
+    "attribution": "required",
+    "contact": "https://github.com/elevate-foundry"
+  },
+  "verification": {
+    "algorithm": "ed25519",
+    "publicKey": "MCowBQYDK2VwAyEAWbqUXevnp2K8P2DDPM0i5iihVNRjjvp19t5LwWonzwU=",
+    "digest": "5269b9adf39f7cf1adc995350b9318e1e88ea4c9b0927f7b7b668cf21952502f",
+    "signature": "fpbA8vui0j5PeVjaXAngOLL/F2DMVcF0cRTWnqNfz5lIcX9EEDlykGXa6QumRqnxn63enOITUcC0y1nBp+dGAg=="
+  }
+}

@@ -1,0 +1,38 @@
+[project]
+name = "visualize-llm"
+version = "0.1.0"
+description = "Interactive LLM neuron firing visualization and directional ablation"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+dependencies = [
+    "torch>=2.0",
+    "transformers>=4.40",
+    "fastapi>=0.100",
+    "uvicorn[standard]>=0.20",
+    "numpy>=1.24",
+    "pydantic>=2.0",
+]
+
+[project.optional-dependencies]
+modal = ["modal>=0.60"]
+dev = [
+    "pytest>=7.0",
+    "pytest-playwright>=0.4",
+    "playwright>=1.40",
+    "ruff>=0.4",
+]
+
+[project.scripts]
+visualize-llm = "src.server:main"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

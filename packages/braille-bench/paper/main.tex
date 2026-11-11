@@ -1,0 +1,331 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{enumitem}
+
+\title{Braille as a Compact Inter-Model Communication Protocol}
+\author{Ryan Barrett \\ \textit{Draft manuscript}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Large language model (LLM) systems increasingly rely on multi-agent pipelines in which one model's output becomes another model's input. These pipelines are expensive because intermediate representations are usually natural language: verbose, redundant, and optimized for human readability rather than model-to-model transfer. We investigate whether Unicode 8-dot braille, a fixed alphabet of 256 symbols, can serve as a compact discrete bottleneck for inter-model communication. We refer to the broader architecture as \emph{Cerebraille}: a shared, inspectable encoding space for AI systems. We implement a benchmark harness that asks heterogeneous LLMs from Anthropic, Google, OpenRouter, and OpenAI-compatible APIs to encode natural language or LaTeX into braille and decode it back into text. We also introduce an iterative codebook-alignment procedure in which models negotiate a shared braille codebook through in-context feedback rather than gradient updates. Initial experiments show that structural markup such as LaTeX can be compressed and reconstructed as valid compilable documents, with observed compression up to 4.25x on minimal LaTeX and 1.62x on a short paper-like document. Natural-language communication achieves compression in the 1.5--3x range with variable semantic fidelity. We find that current LLMs can approximate a shared discrete protocol through prompt-conditioned codebooks, but reliability is limited by stochastic decoding, safety refusals, and lack of deterministic symbol transduction. These results suggest a practical hybrid architecture: deterministic codebook expansion for syntax, LLM-based semantic compression for prose, typed service interfaces for codebook access, and trainable codecs for persistent alignment.
+\end{abstract}
+
+\section{Introduction}
+Modern LLM applications increasingly look less like single model calls and more like distributed cognitive systems. A planner model decomposes a task, a retrieval model gathers context, a reasoning model synthesizes findings, and a final model writes the answer. In such systems, the intermediate representation between models is almost always ordinary natural language. This is convenient for humans but inefficient for machines. Natural language contains repeated function words, predictable discourse markers, and markup boilerplate that may consume significant context and token budget while adding little new information.
+
+This paper studies a simple question: can LLMs communicate with each other more efficiently through a compact symbolic protocol? We focus on Unicode 8-dot braille, whose codepoints U+2800--U+28FF define exactly 256 visible discrete symbols. This alphabet is large enough to encode frequent words, structural markers, mathematical operators, and domain-specific concepts, yet small enough to function as a constrained bottleneck. We refer to this representation as \emph{Braille Code Encoding} (BCE), and to the larger shared encoding architecture as \emph{Cerebraille}.
+
+Our hypothesis is that braille can act as a compact inter-model protocol: an encoder model maps text into a braille stream, and a decoder model reconstructs the intended meaning. Unlike learned neural embeddings, this protocol is discrete, inspectable, copyable, and usable across unrelated model providers. Unlike conventional compression, it can be semantic rather than purely lexical: a single braille cell may represent a word, phrase, LaTeX command, or concept.
+
+Cerebraille frames BCE as a semantic bus for AI systems rather than only as a compression trick. In this view, the braille stream is the transport representation, the codebook is the shared schema, and model-specific encoders and decoders are adapters into that schema. A practical system can combine a typed query interface, frontier-model tool calls, a trainable representation-learning backend, and transformer-compatible token streams: GraphQL-like APIs expose codebook entries and encode/decode services; tool-capable frontier APIs invoke those services during reasoning; PyTorch-style training learns robust codecs and allocation policies; and Llama-shaped sequence models consume and produce the resulting symbolic language.
+
+We make three contributions:
+\begin{enumerate}[leftmargin=*]
+  \item We implement an end-to-end benchmark harness for testing braille-based inter-model communication across heterogeneous LLM providers.
+  \item We introduce an iterative in-context codebook-alignment procedure that approximates a shared discrete embedding space without gradient updates.
+  \item We evaluate BCE on both natural language and LaTeX, showing that structural markup can round-trip into recompilable LaTeX while prose remains lossy but compressible.
+\end{enumerate}
+
+\section{Background and Related Work}
+\subsection{Emergent communication}
+Prior work on emergent communication studies how artificial agents develop symbolic protocols during cooperative games. Multi-agent reinforcement learning systems can converge on discrete languages when optimized end-to-end with gradients or rewards. However, these systems typically require training from scratch or task-specific fine-tuning. Our setting differs: we ask already-trained proprietary LLMs to negotiate a protocol at inference time, using only prompts and feedback.
+
+\subsection{Discrete representation learning}
+Vector-quantized autoencoders and related discrete latent-variable models learn codebooks that map continuous representations into a finite symbol inventory. BCE is analogous to such a codebook, but the codebook is represented explicitly as a text prompt rather than implicitly in model weights. This makes the representation inspectable and portable but also limited by context length and prompt-following reliability.
+
+\subsection{Prompt compression}
+Prompt-compression methods reduce context length by removing redundant tokens or distilling prompts into shorter forms. These approaches generally preserve natural-language form and are optimized for a single model. BCE instead treats compression as a communication protocol between potentially different models.
+
+\subsection{Markup compression}
+LaTeX is especially suitable for symbolic compression because its syntax contains frequent, rigid commands such as \verb|\begin{document}|, \verb|\section{}|, and \verb|\frac{}{}|. A single-cell mapping for common commands can reduce structural overhead while preserving exact syntax if the decoder expands cells deterministically.
+
+\section{Method}
+\subsection{Braille Code Encoding}
+Unicode 8-dot braille provides 256 possible symbols. We use these cells as a discrete vocabulary. In the simplest case, a model may use standard braille-like letter mappings. In a more compressed setting, cells represent higher-level semantic units:
+\begin{itemize}[leftmargin=*]
+  \item frequent English words such as \emph{the}, \emph{is}, \emph{and};
+  \item discourse markers such as \emph{therefore} or \emph{for example};
+  \item LaTeX structures such as \verb|\section{| or \verb|\begin{equation}|;
+  \item mathematical operators such as \verb|\frac{|, \verb|\sum|, or \verb|=|.
+\end{itemize}
+
+An encoder receives a source string $x$ and emits a braille sequence $b$. A decoder receives $b$ and reconstructs $\hat{x}$. We measure compression as
+\begin{equation}
+  r = \frac{|x|}{|b|},
+\end{equation}
+where $|x|$ is source character length and $|b|$ is the number of braille cells.
+
+\subsection{Formal channel model}
+Let $\mathcal{X}$ denote the space of source messages and let $\mathcal{B} = \{0,1,\ldots,255\}$ denote the 8-dot braille alphabet. A braille message is a sequence $b \in \mathcal{B}^{*}$. An inter-model protocol consists of an encoder
+\begin{equation}
+  E_{\theta}^{C}: \mathcal{X} \rightarrow \mathcal{B}^{*}
+\end{equation}
+and a decoder
+\begin{equation}
+  D_{\phi}^{C}: \mathcal{B}^{*} \rightarrow \mathcal{X},
+\end{equation}
+where $\theta$ and $\phi$ are fixed model parameters and $C$ is an external codebook supplied in context. The crucial constraint is that $\theta$ and $\phi$ are not updated. All adaptation occurs through $C$.
+
+The ideal protocol minimizes expected description length while preserving meaning:
+\begin{equation}
+  C^{*} = \arg\min_{C} \; \mathbb{E}_{x \sim \mathcal{D}}
+  \left[
+    |E_{\theta}^{C}(x)| + \lambda \, \mathcal{L}\left(x, D_{\phi}^{C}(E_{\theta}^{C}(x))\right)
+  \right],
+  \label{eq:codebook-objective}
+\end{equation}
+where $\mathcal{D}$ is a task distribution, $|E_{\theta}^{C}(x)|$ is the number of transmitted braille cells, $\mathcal{L}$ is a reconstruction loss, and $\lambda$ controls the compression--fidelity tradeoff. For exact symbolic domains such as LaTeX, $\mathcal{L}$ can be compilation failure or token edit distance. For natural language, $\mathcal{L}$ is semantic divergence.
+
+Because $|\mathcal{B}| = 256$, each braille cell has a raw channel capacity of
+\begin{equation}
+  \log_{2} 256 = 8 \text{ bits}.
+\end{equation}
+However, the useful capacity is not simply eight bits per cell. A cell assigned to a high-frequency unit such as ``the'' or \verb|\section{| carries more practical compression value than a cell assigned to a rare token. If $p(u)$ is the empirical probability of a semantic unit $u$, then an efficient codebook assigns shorter braille sequences to units with larger $p(u)$, approximating the source-coding principle
+\begin{equation}
+  \ell(u) \propto -\log p(u),
+\end{equation}
+subject to the constraint that each unit must remain decodable by another LLM.
+
+\subsection{BCE as a discrete semantic bottleneck}
+The braille sequence $b$ is a bottleneck between two frozen models:
+\begin{equation}
+  x \xrightarrow[]{E_{\theta}^{C}} b \xrightarrow[]{D_{\phi}^{C}} \hat{x}.
+\end{equation}
+This resembles a discrete autoencoder, but with two important differences. First, the encoder and decoder may be different proprietary models with no shared weights. Second, the codebook is explicit text rather than a learned embedding matrix. Thus BCE is best understood as a prompt-conditioned vector quantization layer: the codebook maps high-level semantic units to discrete symbols, and LLMs perform approximate lookup and interpolation in context.
+
+\subsection{Cerebraille as a shared encoding space}
+Cerebraille generalizes BCE from a single encode--decode experiment into an interface layer for AI systems. The central object is a versioned codebook registry that maps braille cells or cell sequences to typed meanings, expansions, domains, examples, and validation rules. This registry can be exposed through a GraphQL-style control plane with operations such as symbol lookup, domain-specific encoding, decoding, codebook negotiation, and round-trip scoring. The value of such an interface is that the symbolic protocol becomes queryable and auditable rather than hidden inside prompts or model weights.
+
+The learning layer can be implemented independently of the serving layer. A PyTorch backend can train encoders, decoders, semantic judges, and codebook-allocation policies against the objective in Equation~\ref{eq:codebook-objective}. The trained components may optimize for compression, fidelity, latency, or domain-specific exactness. For example, a LaTeX codec can learn that structural commands should receive single-cell assignments, while a prose codec can learn phrase-level or concept-level units whose reconstruction is judged semantically rather than byte-for-byte.
+
+The representation should also be Llama-shaped: it should behave like a sequence language that transformer models can read, write, attend over, and fine-tune against. This does not require the protocol to be tied to Llama weights specifically. Rather, the encoded stream should preserve the operational shape expected by autoregressive models: ordered tokens, local and global dependencies, reusable vocabulary entries, and adapter-friendly mappings between text, symbols, and task state. Under this framing, Cerebraille is a discrete, inspectable approximation to a shared latent space.
+
+\subsection{Frontier-model tool use}
+Tool-calling APIs provide a practical bridge between prompt-mediated codebooks and deterministic symbolic services. Instead of asking a model to remember or hallucinate the full mapping, a frontier model can request operations such as \emph{lookupSymbol}, \emph{encode}, \emph{decode}, \emph{negotiateCodebook}, \emph{scoreRoundTrip}, or \emph{validateLatex}. The application executes the requested tool against the authoritative Cerebraille registry or validator, then returns the result to the model as structured context.
+
+This design changes the role of the LLM from sole codec to orchestrator. The model can decide when compression is useful, which domain codebook to apply, whether fidelity should be exact or semantic, and which validation step is required. The tool layer performs the stateful or exact operations: codebook lookup, deterministic expansion, compilation checks, audit logging, and benchmark scoring. This is especially important for structured domains such as LaTeX, where a single malformed delimiter can invalidate an otherwise semantically correct reconstruction.
+
+Frontier tool use also makes the shared encoding space operational across providers. Anthropic-style, OpenAI-style, Gemini-style, or OpenRouter-mediated models can all call the same external Cerebraille service even if their internal embeddings and tokenizers differ. The common object is not a hidden activation vector but a typed external protocol: a braille stream plus a versioned codebook and a set of callable operations.
+
+For a test distribution $\mathcal{D}$, we define the protocol utility
+\begin{equation}
+  U(C) = \mathbb{E}_{x \sim \mathcal{D}}
+  \left[
+    \alpha \, R(x; C) + \beta \, F(x; C) - \gamma \, T(x; C)
+  \right],
+\end{equation}
+where $R(x;C)=|x|/|E_{\theta}^{C}(x)|$ is compression ratio, $F(x;C)$ is reconstruction fidelity, and $T(x;C)$ is round-trip latency. This makes the protocol explicitly multi-objective: a useful codebook must compress, preserve meaning, and remain operationally cheap.
+
+\subsection{Expected compression from structural symbols}
+Let a message $x$ decompose into atomic units $u_1,\ldots,u_n$, where each unit has original length $L(u_i)$ and code length $\ell_C(u_i)$ measured in braille cells. If a unit is assigned a single braille cell, then $\ell_C(u_i)=1$; otherwise it may be spelled or encoded as a sequence. The expected compression ratio under codebook $C$ is
+\begin{equation}
+  \mathbb{E}[R_C]
+  =
+  \frac{\sum_{u \in \mathcal{U}} p(u) L(u)}
+       {\sum_{u \in \mathcal{U}} p(u) \ell_C(u)}.
+\end{equation}
+This expression explains why markup is a favorable domain. A command such as \verb|\begin{document}| has large $L(u)$ and high reuse. Assigning it $\ell_C(u)=1$ yields a large contribution to the numerator while adding only one transmitted cell to the denominator.
+
+For a structural subset $S \subset \mathcal{U}$ whose members are all assigned one-cell codes, the absolute character savings per message is
+\begin{equation}
+  \Delta_C(x)
+  =
+  \sum_{u_i \in S} \left(L(u_i)-1\right).
+\end{equation}
+Thus the compression ratio can be written as
+\begin{equation}
+  R_C(x)
+  =
+  \frac{|x|}
+       {|x|-\Delta_C(x)+\epsilon_C(x)},
+\end{equation}
+where $\epsilon_C(x)$ accounts for expansion overhead from ambiguous, out-of-codebook, or escaped content. A well-designed LaTeX BCE codebook maximizes $\Delta_C$ for frequent commands while minimizing $\epsilon_C$ for prose and math.
+
+This yields a simple design principle:
+\begin{equation}
+  u \in C \quad \text{if} \quad p(u)\left(L(u)-1\right) > \eta,
+\end{equation}
+where $\eta$ is the opportunity cost of consuming one of the 256 available braille cells. In other words, cells should be allocated to units with high expected savings, not merely high semantic importance.
+
+\subsection{Model providers}
+The harness supports Anthropic, Google Gemini, OpenRouter, and OpenAI-compatible APIs. At the time of testing, OpenAI calls failed due to quota exhaustion and were excluded from working-pair analysis. Anthropic Haiku, Anthropic Sonnet, Anthropic Opus 4.5, Gemini 2.5 Flash, Gemini 2.0 Flash, Llama 3.1 70B via OpenRouter, and Mistral Large via OpenRouter were available.
+
+\subsection{Iterative codebook alignment}
+To approximate a joint embedding space, we implemented an iterative alignment loop. Each session proceeds as follows:
+\begin{enumerate}[leftmargin=*]
+  \item An encoder model proposes an initial braille codebook.
+  \item A decoder model receives a shared starting codebook.
+  \item The encoder encodes a test sentence using its codebook.
+  \item The decoder reconstructs the sentence.
+  \item The system scores fidelity and feeds back the mismatch.
+  \item Models refine their codebooks and repeat.
+\end{enumerate}
+
+This is not gradient descent. No model parameters are updated. Instead, the codebook functions as an external, prompt-conditioned memory. The models use in-context learning to adapt behavior to the evolving protocol.
+
+More formally, at alignment round $t$ the system maintains a codebook $C_t$. Given a probe message $x_t$, the encoder emits
+\begin{equation}
+  b_t = E_{\theta}^{C_t}(x_t),
+\end{equation}
+the decoder emits
+\begin{equation}
+  \hat{x}_t = D_{\phi}^{C_t}(b_t),
+\end{equation}
+and an evaluator computes a scalar fidelity score
+\begin{equation}
+  f_t = F(x_t, \hat{x}_t) \in [0,1].
+\end{equation}
+The next codebook is produced by a prompt-mediated update operator
+\begin{equation}
+  C_{t+1} = A_{\theta,\phi}(C_t, x_t, b_t, \hat{x}_t, f_t),
+\end{equation}
+where $A_{\theta,\phi}$ is not a differentiable optimizer but a natural-language negotiation step performed by the models themselves. This gives a gradient-free analogue of representation learning:
+\begin{equation}
+  C_0 \rightarrow C_1 \rightarrow \cdots \rightarrow C_T,
+\end{equation}
+with convergence defined by stable high-fidelity decoding:
+\begin{equation}
+  f_t \geq \tau \quad \text{for } k \text{ consecutive rounds}.
+\end{equation}
+In our implementation, $\tau=0.75$ and $k=2$.
+
+\subsection{LaTeX-specific codebook}
+For LaTeX experiments, we seeded the system with a domain-specific codebook mapping common LaTeX constructs to braille cells. Examples include:
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+Codepoint & LaTeX expansion \\
+\midrule
+U+28CD & \verb|\documentclass{article}| \\
+U+28C3 & \verb|\begin{document}| \\
+U+28C9 & \verb|\end{document}| \\
+U+28CE & \verb|\section{| \\
+U+28CA & \verb|\begin{equation}| \\
+U+28CB & \verb|\end{equation}| \\
+U+28D6 & \verb|\frac{| \\
+U+283F & \verb|=| \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Prose was spelled using standard braille-like letter mappings, while structural commands were collapsed to single cells. We validated decoded LaTeX with both a structural checker and real \verb|pdflatex| compilation.
+
+\section{Experiments}
+\subsection{Natural-language round trip}
+We tested live encode--decode pairs across providers. A typical successful case used Anthropic Haiku as encoder and Gemini 2.5 Flash as decoder. The system produced a braille stream and reconstructed coherent English. Compression varied by prompt and model pair, typically around 1.5--3x. Decoder behavior was model-dependent: Gemini and Haiku decoded reliably, while some larger Claude models refused to decode braille content under certain prompts due to safety filters.
+
+\subsection{Codebook alignment}
+A two-round alignment session between Haiku and Gemini produced the following illustrative trajectory. In round 1, the sentence ``The cat sat on the mat'' decoded as ``the it were on the are,'' yielding 25\% token-overlap fidelity. After refinement, round 2 encoded ``Water is made of hydrogen and oxygen'' and decoded it perfectly, yielding 100\% fidelity. The final codebook contained 151 entries, including mappings such as U+2801 = ``the'', U+2802 = ``is'', U+2803 = ``of'', and U+2805 = ``and''.
+
+\subsection{LaTeX round trip}
+We evaluated four LaTeX documents: a minimal document, a sectioned document, a math-containing document, and a short paper-like document. Results from a Haiku-to-Haiku run are shown in Table~\ref{tab:latex-results}.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lrrrr}
+\toprule
+Document & Compression & Fidelity & Valid structure & Compiles \\
+\midrule
+minimal & 4.25x & 100\% & yes & yes \\
+sectioned & 1.66--1.69x & 97--100\% & yes & variable \\
+with-math & 1.95--2.15x & 98--100\% & yes & no \\
+full-paper & 1.53--1.62x & 96--100\% & yes & yes \\
+\bottomrule
+\end{tabular}
+\caption{LaTeX-to-braille-to-LaTeX round-trip results. Structural markup compresses well and often recompiles. Math-heavy documents expose reliability failures in stochastic decoding.}
+\label{tab:latex-results}
+\end{table}
+
+The minimal document achieved 4.25x compression and recompiled successfully. The paper-like document achieved 1.62x compression with 100\% measured token fidelity and successful compilation. Math-heavy documents were fragile: decoders sometimes inserted inline math delimiters inside display math environments or changed mathematical operators. These errors were small at the token level but fatal for compilation.
+
+\section{Findings}
+\subsection{Braille can act as a compact symbolic transport}
+The experiments demonstrate that braille streams can carry meaningful inter-model messages across providers. When the codebook is explicit, models can interpret braille cells as symbolic units rather than as ordinary text.
+
+\subsection{Structural syntax is easier than semantic prose}
+LaTeX commands compress well because they are discrete and repetitive. A cell-to-command mapping is nearly lossless. Prose compression is more ambiguous: a cell may represent a word, phrase, or concept, and the decoder must infer the intended meaning.
+
+\subsection{LLMs are not deterministic codecs}
+Lossless reconstruction of LaTeX requires exact symbol transcription. Current LLMs occasionally add or remove delimiters, alter capitalization, or substitute visually similar braille cells. These failures are acceptable for semantic communication but unacceptable for compilation.
+
+\subsection{Safety filters affect braille decoding}
+Some Anthropic Opus and Sonnet variants refused braille-decoding requests, sometimes categorizing them as biological-risk refusals despite benign content. Simpler prompts and smaller models reduced refusals, but the behavior suggests that opaque Unicode streams may interact unpredictably with safety systems.
+
+\section{Discussion}
+\subsection{Is this a joint embedding space?}
+BCE is not a learned continuous joint embedding in the CLIP or VQ-VAE sense. There is no geometric latent space and no gradient-based alignment. However, the negotiated codebook approximates a \emph{shared discrete representation}: both models map text into and out of the same finite symbol inventory. The codebook is external rather than parametric. It is closer to an in-context, symbolic VQ codebook than to a neural embedding matrix.
+
+\subsection{Do models need gradient updates?}
+For small and explicit codebooks, no. LLMs can follow in-context mappings such as U+2801 = ``the'' without fine-tuning. The codebook acts as a prompt-level behavioral update. For large-scale, persistent, robust compression, yes. Gradient updates or deterministic transducers would likely be required to achieve high compression, generalization, and reproducibility beyond the context window.
+
+\subsection{Hybrid architecture}
+The strongest design is hybrid:
+\begin{itemize}[leftmargin=*]
+  \item deterministic lookup tables for exact syntax such as LaTeX commands and math operators;
+  \item LLM-based semantic compression for prose and high-level concepts;
+  \item a typed codebook service for lookup, versioning, audit logs, and schema-constrained encode--decode operations;
+  \item frontier-model tool calls that let LLMs invoke authoritative encoding, decoding, scoring, and validation services;
+  \item trainable codecs and evaluators for persistent alignment beyond a single prompt context;
+  \item explicit checks such as compilation, unit tests, or semantic judges after decoding.
+\end{itemize}
+
+This architecture separates lossless transduction from lossy semantic compression. It also separates the protocol surface from the learning machinery: GraphQL-like interfaces make the codebook operationally accessible, frontier tool calls make the interface usable inside live model workflows, PyTorch-style training improves the encoders and decoders, and Llama-shaped sequence modeling makes the representation usable inside existing LLM workflows.
+
+\section{Applications}
+\subsection{API cost and latency reduction}
+Multi-agent LLM pipelines may reduce token usage by exchanging compact intermediate representations instead of verbose natural language.
+
+\subsection{Context-window extension}
+Conversation histories, retrieved documents, or intermediate reasoning traces could be compacted into braille streams and expanded later.
+
+\subsection{Agent memory and tool protocols}
+Cerebraille can represent agent state in a compact form: goals, constraints, retrieved facts, tool history, uncertainty, and proposed next actions. A typed service interface can expose these packets to agents and tools without requiring every component to share the same model provider. The same mechanism can encode tool intents such as search, summarization, database queries, benchmark execution, or document transformation.
+
+\subsection{Frontier API tool orchestration}
+A frontier model can use Cerebraille as an external symbolic workbench. For example, it can call an encoding tool to compact a retrieved document, a lookup tool to inspect an unfamiliar braille cell, a decoding tool to recover an agent state packet, and a validation tool to verify that decoded LaTeX compiles. This pattern supports agentic workflows in which the model reasons in natural language when needed but delegates exact symbolic operations to a shared service.
+
+\subsection{Structured document transfer}
+Documents with repeated markup, including LaTeX, XML, JSON schemas, and DSLs, are natural candidates for codebook-based compression.
+
+\subsection{Defense and intelligence}
+A compact symbolic channel may be useful in bandwidth-constrained or denied-communications settings. It may also enable analyst models to exchange compressed structured findings. The same properties raise dual-use concerns: opaque symbolic streams can function as covert channels if the codebook is not disclosed. Any deployment should include audit logging, explicit codebook disclosure, and detection tools for hidden protocol use.
+
+\section{Limitations}
+\begin{enumerate}[leftmargin=*]
+  \item Experiments are preliminary and small-scale.
+  \item Model outputs are stochastic; exact reproducibility is not guaranteed.
+  \item Compression ratios are measured in characters and braille cells, not provider-specific tokens.
+  \item OpenAI models were unavailable due to quota limits during testing.
+  \item Some models refuse braille-decoding tasks unpredictably.
+  \item The codebook currently fits in context; larger codebooks may not.
+  \item The method is not cryptographic security and should not be treated as encryption.
+\end{enumerate}
+
+\section{Conclusion}
+We presented an initial benchmark for using 8-dot Unicode braille as a compact inter-model communication protocol. The results suggest that LLMs can use explicit braille codebooks to exchange compressed information, and that iterative in-context alignment can approximate a shared discrete representation without gradient updates. The strongest results occur on structured markup, where LaTeX commands collapse to single cells and can be reconstructed into compilable documents. However, stochastic decoding limits reliability for exact symbolic tasks, especially mathematics. Future work should combine deterministic codebook transduction with LLM-based semantic compression and evaluate larger model matrices, larger codebooks, and real multi-agent workflows.
+
+\bibliographystyle{plain}
+\begin{thebibliography}{9}
+\bibitem{shannon1948}
+Claude E. Shannon. A mathematical theory of communication. \emph{Bell System Technical Journal}, 1948.
+
+\bibitem{vqvae}
+Aaron van den Oord, Oriol Vinyals, and Koray Kavukcuoglu. Neural discrete representation learning. \emph{NeurIPS}, 2017.
+
+\bibitem{emergent-language}
+Angeliki Lazaridou, Alexander Peysakhovich, and Marco Baroni. Multi-agent cooperation and the emergence of natural language. \emph{ICLR}, 2017.
+
+\bibitem{llmlingua}
+Huiqiang Jiang et al. LLMLingua: Compressing prompts for accelerated inference of large language models. 2023.
+\end{thebibliography}
+
+\end{document}

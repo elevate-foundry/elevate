@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+*.egg
+
+# Node
+node_modules/
+.next/
+dist/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment / secrets
+.env
+.env.local
+.env.*.local
+
+# Build artifacts
+*.pdf
+*.aux
+*.log
+*.toc
+*.out
+
+# Model weights (downloaded at runtime)
+packages/cortex/models/*.gguf
+packages/cortex/models/*.bin
+packages/cortex/models/*.safetensors
+
+# Data / runtime
+data/
+*.db
+*.sqlite
+*.sqlite3
+audit/
+results/
+exposure-output/
+
+# Tauri build artifacts
+src-tauri/target/
+
+# Large cloned repos (corpus builder)
+packages/meta/corpus-builder/repos/
+
+# Large generated data / model checkpoints
+packages/braille-bench/training/checkpoints/
+packages/meta/corpus-builder/out/
+packages/meta/corpus-builder/finetune/data/

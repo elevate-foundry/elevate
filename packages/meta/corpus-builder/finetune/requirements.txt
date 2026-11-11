@@ -1,0 +1,9 @@
+# Install in a GPU environment (CUDA). bitsandbytes is CUDA-only; omit on CPU/Mac.
+torch>=2.2
+transformers>=4.44
+peft>=0.12
+datasets>=2.20
+accelerate>=0.33
+pyyaml>=6.0
+# Optional, for 4-bit QLoRA (CUDA GPUs only):
+bitsandbytes>=0.43 ; platform_system == "Linux"

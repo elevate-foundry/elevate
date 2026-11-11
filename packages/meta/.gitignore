@@ -1,0 +1,22 @@
+# macOS
+.DS_Store
+
+# Node / Next.js
+dashboard/node_modules/
+dashboard/.next/
+dashboard/.vercel/
+
+# Generated data / artifacts
+exposure-output/
+exposure-toolkit/exposure-output/
+corpus-builder/out/
+corpus-builder/repos/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Logs
+*.log

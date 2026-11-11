@@ -1,0 +1,1066 @@
+\documentclass[11pt,twoside]{amsart}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{tikz}
+\usetikzlibrary{arrows,shapes,positioning,matrix,fit,backgrounds}
+
+% Theorem environments
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+% Math operators
+\DeclareMathOperator{\rank}{rank}
+\DeclareMathOperator{\diag}{diag}
+\DeclareMathOperator{\ModInv}{ModInv}
+\DeclareMathOperator{\Decode}{Decode}
+\DeclareMathOperator{\HKDF}{HKDF}
+\DeclareMathOperator{\DRBG}{DRBG}
+\DeclareMathOperator{\BBES}{BBES}
+
+% Indicator function (using standard mathbb since bbm not available)
+\newcommand{\indicator}{\mathbf{1}}
+
+% Bold symbols
+\newcommand{\bX}{\mathbf{X}}
+\newcommand{\bH}{\mathbf{H}}
+\newcommand{\bB}{\mathbf{B}}
+\newcommand{\bw}{\mathbf{w}}
+\newcommand{\bc}{\mathbf{c}}
+\newcommand{\br}{\mathbf{r}}
+\newcommand{\bR}{\mathbf{R}}
+\newcommand{\bdelta}{\boldsymbol{\delta}}
+\newcommand{\bepsilon}{\boldsymbol{\epsilon}}
+\newcommand{\bSigma}{\boldsymbol{\Sigma}}
+\newcommand{\bmu}{\boldsymbol{\mu}}
+\newcommand{\boldeta}{\boldsymbol{\eta}}
+\newcommand{\calR}{\mathcal{R}}
+\newcommand{\calC}{\mathcal{C}}
+\newcommand{\calM}{\mathcal{M}}
+\newcommand{\calN}{\mathcal{N}}
+\newcommand{\bbF}{\mathbb{F}}
+\newcommand{\bbR}{\mathbb{R}}
+\newcommand{\bbZ}{\mathbb{Z}}
+\newcommand{\indicator}{\mathbbm{1}}
+
+\title[Biometric/Behavioral Fusion Engine]{Formalizing the Biometric/Behavioral Fusion Engine:\\A Noise-Resilient, Zero-Cookie Identity Protocol}
+
+\author[Anonymous]{Anonymous Author(s)}
+\address{Institution}
+\email{author@institution.edu}
+
+\date{\today}
+
+\begin{document}
+
+\begin{abstract}
+Modern identity architectures are undergoing a paradigm shift away from local persistent cookies, tracking tokens, and static hardware registers due to systemic tracking vulnerabilities and privacy regulations. The Biometric/Behavioral Identity (BBID) framework represents a zero-cookie, zero-local-storage paradigm that synthesizes a user's physical and behavioral interaction with a device into a cryptographically stable, highly unique identity token. This paper presents a formalized specification of the Biometric/Behavioral Fusion Engine, which implements a noise-resilient identity protocol using signed random projection locality-sensitive hashing, fuzzy commitment schemes, and edge-derived deterministic user-specific projection.
+
+We establish the mathematical foundations of the composite feature vector space, prove locality-preserving properties of the random projection step, analyze collision bounds under the Birthday Paradox, and resolve the architectural projection seeding dilemma through an Edge-Derived Deterministic User-Specific Projection (ED-DUP) paradigm. We further examine the privacy implications of unsupervised demographic inference from behavioral biometric data and propose mitigation strategies.
+\end{abstract}
+
+\maketitle
+
+\tableofcontents
+
+%=====================================================================
+\section{Feature Vector Space Formulation}
+%=====================================================================
+
+\subsection{Composite Feature Vector Definition}
+
+To move beyond the limitations of naive hashing pipelines---which suffer from extreme avalanche effects and lack tolerance for human or environmental fluctuations---the system implements a formalized Biometric/Behavioral Fusion Engine. This engine models the user's complete device state and real-time behavioral dynamics as a high-dimensional composite feature vector.
+
+\begin{definition}[Composite Feature Vector]
+\label{def:composite}
+The composite feature vector $\bX \in \bbR^D$ is defined as the concatenation of a deterministic hardware subspace $\bH \in \bbR^{d_H}$ and a stochastic behavioral subspace $\bB \in \bbR^{d_B}$:
+\begin{equation}
+\bX = \begin{bmatrix} \bH \\ \bB \end{bmatrix} \in \bbR^D
+\end{equation}
+where the total dimensionality is $D = d_H + d_B$.
+\end{definition}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    box/.style={draw, minimum width=12cm, minimum height=1.8cm, align=center, font=\small},
+    label/.style={font=\small\itshape, text width=4cm, align=right}
+]
+    \node[box, fill=blue!5] (H) {
+        \textbf{Deterministic Subspace $\bH$} \\
+        (Canvas, WebGL, CPU, Geometry, PUF, PPA)
+    };
+    \node[label, left=0.5cm of H] {Categorical metrics mapped to\\discrete integer coordinates};
+    
+    \node[box, fill=red!5, below=0.3cm of H] (B) {
+        \textbf{Stochastic Subspace $\bB$} \\
+        (Keystroke dynamics, Mouse, Scroll, Touch)
+    };
+    \node[label, left=0.5cm of B] {Continuous biometrics subject to\\environmental noise $\bepsilon$};
+    
+    \node[font=\small\bfseries, above=0.3cm of H] {Composite Feature Vector $\bX \in \bbR^D$};
+    \draw[thick] (-6.5,-2.3) rectangle (6.5,2.7);
+\end{tikzpicture}
+\caption{Structure of the composite feature vector $\bX$, showing the decomposition into deterministic hardware subspace $\bH$ and stochastic behavioral subspace $\bB$.}
+\label{fig:composite}
+\end{figure}
+
+\subsection{Deterministic Hardware Subspace}
+
+The deterministic hardware subspace $\bH$ establishes a baseline by aggregating categorical, physical device parameters. These metrics include canvas rendering outputs, WebGL constants, CPU core configurations, and screen geometry.
+
+To bolster security, this subspace is extended with silicon-level hardware biometrics:
+\begin{itemize}
+    \item \textbf{Physical Unclonable Function (PUF)}: Challenge-response pairs measuring unique microscopic manufacturing variations.
+    \item \textbf{Physical AI (PPA)}: Silicon finger-channel matrices measuring crystal oscillator drift and cache timing latency curves.
+\end{itemize}
+
+These deterministic coordinates are treated as discrete categorical coordinates and mapped directly to integer spaces to ensure consistency across separate evaluation intervals.
+
+\subsection{Stochastic Behavioral Subspace}
+
+The stochastic behavioral subspace $\bB$ captures continuous, dynamic human-interaction signals. These signals include mean keystroke flight time, mouse acceleration variance, scroll velocity entropy, math calculation latency, and touch-gesture trajectory dynamics.
+
+\begin{proposition}[Measurement Noise Model]
+\label{prop:noise}
+For any two observations $\bX_i$ and $\bX_j$ gathered from the same user across different sessions, the relationship satisfies:
+\begin{equation}
+\bX_i = \bX_j + \bepsilon, \quad \bepsilon \sim \calN(\mathbf{0}, \bSigma)
+\end{equation}
+where $\bepsilon$ represents a multivariate Gaussian measurement noise vector governed by a covariance matrix $\bSigma$.
+\end{proposition}
+
+\subsection{Privacy Considerations}
+
+Storing or transmitting raw biometric templates $\bX$ presents severe privacy risks, as compromised databases allow adversaries to mount template-reconstruction attacks and reverse-engineer the user's physical attributes. Consequently, the BBID pipeline passes these vectors through a non-invertible, cancelable transformation, ensuring that the original feature space cannot be reverse-engineered even if compromised templates are exposed.
+
+\subsection{Hardware Trust Model and Deployment Context}
+
+\subsubsection{Browser Fingerprinting Volatility}
+
+On the open web, browser-derived categorical metrics for $\bH$ are subject to significant volatility. Canvas rendering outputs shift across browser versions, GPU driver updates alter WebGL constants, and OS patches modify reported screen geometry. These metrics are not cryptographically stable anchors; they are high-variance observations subject to their own noise process:
+\begin{equation}
+\bH_i = \bH_j + \bepsilon_H, \quad \bepsilon_H \sim \calN(\mathbf{0}, \bSigma_H)
+\end{equation}
+where $\bSigma_H$ captures browser-update-induced variance, driver-version drift, and rendering-engine non-determinism.
+
+\subsubsection{Deployment Tier Classification}
+
+The trust placed in $\bH$ is a function of deployment context.
+
+\begin{table}[htbp]
+\centering
+\caption{Deployment tier classification for hardware trust model.}
+\label{tab:tiers}
+\begin{tabular}{@{}p{2.8cm}p{2cm}p{2.8cm}p{4cm}@{}}
+\toprule
+\textbf{Deployment Tier} & \textbf{$\bH$ Trust} & \textbf{$\bSigma_H$ Magnitude} & \textbf{Recommended Usage} \\
+\midrule
+Open Web (Browser) & Low & High ($\|\bSigma_H\| \gg 0$) & Coarse filtering only; primary signal from $\bB$ \\
+Native Enterprise & Medium & Moderate & Hardware binding with TPM-backed attestation \\
+Hardware-Bound (PUF/PPA) & High & Low ($\|\bSigma_H\| \approx 0$) & Cryptographic anchor; silicon-level identity root \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Recommendation}
+
+For open-web deployments, $\bH$ is treated as a semi-deterministic coarse filter rather than a cryptographic anchor. The primary identity signal derives from the behavioral subspace $\bB$, with $\bH$ serving only to prune the search space during authentication. Full cryptographic binding to $\bH$ is reserved for native enterprise applications where hardware-backed PUF or PPA attestation is guaranteed.
+
+%=====================================================================
+\section{The Analog-to-Digital Bridge: Random Projection LSH}
+%=====================================================================
+
+\subsection{Signed Random Projection LSH}
+
+To convert the noisy continuous vector $\bB$ into a stable identity token without relying on persistent local storage or cookies, the Biometric/Behavioral Fusion Engine passes the behavioral subspace through a Signed Random Projection (SRP) Locality-Sensitive Hashing (LSH) filter, commonly referred to as SimHash.
+
+While standard cryptographic hash functions (such as SHA-256) are designed to maximize the avalanche effect---where a single-bit change in the input yields a completely uncorrelated output---LSH functions are mathematically formulated to maximize hashing collisions for similar inputs.
+
+\subsection{Hyperplane Generation}
+
+\begin{definition}[Random Hyperplane Ensemble]
+\label{def:hyperplanes}
+The protocol defines a set of $k$ random hyperplanes:
+\begin{equation}
+\calR = \{\br_1, \br_2, \ldots, \br_k\}, \quad \br_i \sim \calN(\mathbf{0}, \mathbf{I}_{d_B})
+\end{equation}
+where each hyperplane $\br_i$ is drawn from a standard normal distribution $\calN(\mathbf{0}, \mathbf{I}_{d_B})$.
+\end{definition}
+
+\subsection{Projection Function}
+
+\begin{definition}[SRP Projection Function]
+\label{def:projection}
+The projection function $h_{\text{SRP}}: \bbR^{d_B} \rightarrow \{0, 1\}^k$ generates a $k$-bit binary string where the $i$-th bit is defined as:
+\begin{equation}
+w_i = \indicator[\br_i \cdot \bB \geq 0] = 
+\begin{cases} 
+1 & \text{if } \br_i \cdot \bB \geq 0 \\
+0 & \text{if } \br_i \cdot \bB < 0 
+\end{cases}
+\end{equation}
+\end{definition}
+
+\subsection{Locality-Preserving Properties}
+
+\begin{theorem}[Bit-Match Probability]
+\label{thm:bitmatch}
+For any two behavioral vectors $\bB_i, \bB_j \in \bbR^{d_B}$, the probability that a given bit matches under the SRP projection is:
+\begin{equation}
+P[w_i(\bB_i) = w_i(\bB_j)] = 1 - \frac{\theta_{ij}}{\pi}
+\end{equation}
+where the angular distance is defined as:
+\begin{equation}
+\theta_{ij} = \arccos\left(\frac{\bB_i \cdot \bB_j}{\|\bB_i\| \|\bB_j\|}\right)
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+The sign of the dot product $\br \cdot \bB$ is determined by which side of the hyperplane defined by $\br$ the point $\bB$ lies on. For two vectors $\bB_i$ and $\bB_j$, the probability that a random hyperplane separates them equals $\theta_{ij}/\pi$, where $\theta_{ij}$ is the angle between the vectors. Therefore, the probability they remain on the same side is $1 - \theta_{ij}/\pi$.
+\end{proof}
+
+This signed projection acts as an analog-to-digital bridge, mapping the high-dimensional continuous biometric space directly to the discrete Hamming space $\{0, 1\}^k$ while preserving the cosine similarity between separate sessions. The locality-preserving property ensures that small variations in typing speed, mouse acceleration, or processing latency result in a highly bounded Hamming distance between the resulting bit-strings $\bw_i$ and $\bw_j$.
+
+\subsection{Comparative Analysis of Transformation Methods}
+
+While alternative dimension-reduction and hashing techniques exist, random projection is preferred for its balanced trade-off between computational efficiency, distance preservation, and template security. \Cref{tab:comparison} contrasts random projection with other common indexing and transformation methods in biometric template protection.
+
+\begin{table}[htbp]
+\centering
+\caption{Comparative analysis of biometric template transformation methods.}
+\label{tab:comparison}
+\begin{tabular}{@{}p{3cm}p{2.5cm}p{2.5cm}p{2cm}p{2.5cm}@{}}
+\toprule
+\textbf{Method} & \textbf{Distance Metric} & \textbf{Security Class} & \textbf{Complexity} & \textbf{Compromise Risk} \\
+\midrule
+Random Projection (SRP-LSH) & Cosine Similarity & Cancelable / Non-Invertible & $\mathcal{O}(kd)$ & Low \\
+Lean Walsh Transform & $\ell_2$ Norm & Cancelable / Non-Invertible & $\mathcal{O}(d \log d)$ & Low \\
+Data-Aware (PCA) & Maximized Variance & Invertible without Keys & $\mathcal{O}(d^3)$ & High \\
+Bio-Hashing (Orthogonal) & Euclidean Distance & Key-Dependent & $\mathcal{O}(kd)$ & High \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Entropy Regularization via Feature Decorrelation}
+
+\subsubsection{The Correlation Problem}
+
+Behavioral features in $\bB$ exhibit significant cross-correlation. Typing speed correlates with mouse velocity, scroll entropy correlates with interaction cadence, and keystroke variance correlates with overall motor precision. These correlations reduce the effective min-entropy of the resulting bitstring $\bw$, as correlated features contribute redundant rather than independent bits.
+
+Let $\mathbf{C}_B = \diag(\bSigma_B)^{-1/2} \bSigma_B \diag(\bSigma_B)^{-1/2}$ be the behavioral correlation matrix. The effective dimensionality of $\bB$ is bounded by the rank of $\mathbf{C}_B$, which for highly correlated features satisfies $\rank(\mathbf{C}_B) \ll d_B$.
+
+\subsubsection{Decorrelation Transform}
+
+\begin{definition}[Whitening Transform]
+\label{def:whitening}
+Before the SRP-LSH step, the behavioral vector $\bB$ is passed through a decorrelation transform $\mathcal{T}: \bbR^{d_B} \rightarrow \bbR^{d_B}$ that whitens the feature space:
+\begin{equation}
+\tilde{\bB} = \mathcal{T}(\bB) = \mathbf{W} \bB
+\end{equation}
+where $\mathbf{W} \in \bbR^{d_B \times d_B}$ is a whitening matrix satisfying $\mathbf{W} \bSigma_B \mathbf{W}^T = \mathbf{I}_{d_B}$.
+\end{definition}
+
+\begin{table}[htbp]
+\centering
+\caption{Candidate decorrelation transforms.}
+\label{tab:decorrelation}
+\begin{tabular}{@{}p{3.5cm}p{4cm}p{2cm}p{3.5cm}@{}}
+\toprule
+\textbf{Transform} & \textbf{Whitening Matrix} & \textbf{Complexity} & \textbf{Security Property} \\
+\midrule
+ZCA Whitening & $\mathbf{W}_{\text{ZCA}} = \bSigma_B^{-1/2}$ & $\mathcal{O}(d_B^3)$ & Preserves orientation \\
+Lean Walsh + Random Sign & $\mathbf{W}_{\text{LWT}} = \mathbf{D} \mathbf{H}_{\text{Walsh}}$ & $\mathcal{O}(d_B \log d_B)$ & Cancelable, non-invertible \\
+Localized PCA & $\mathbf{W}_{\text{PCA}} = \boldsymbol{\Lambda}^{-1/2} \mathbf{V}^T$ & $\mathcal{O}(d_B^3)$ & Variance separation \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Recommendation}
+
+The Lean Walsh Transform with random sign diagonal is preferred for its $\mathcal{O}(d_B \log d_B)$ complexity and cancelable security properties. The random sign diagonal $\mathbf{D}$ ensures that even if $\mathbf{H}_{\text{Walsh}}$ is known, the transform remains non-invertible without $\mathbf{D}$. The decorrelated vector $\tilde{\bB}$ is then passed to the SRP-LSH step:
+\begin{equation}
+w_i = \indicator[\br_i \cdot \tilde{\bB} \geq 0]
+\end{equation}
+This ensures that each bit $w_i$ carries approximately 1 bit of min-entropy, maximizing the information density of the resulting $k$-bit string.
+
+%=====================================================================
+\section{Stabilization via Fuzzy Commitment}
+%=====================================================================
+
+\subsection{Overview}
+
+To enable the OAuth provider to output an exact, immutable identity string across separate user sessions without storing local tracking cookies, the protocol implements a Fuzzy Commitment Scheme. This key-binding biometric cryptosystem secures a stable cryptographic key within an error-correcting framework, ensuring that intra-class variations in the user's behavioral profile are mathematically corrected.
+
+\subsection{Error-Correcting Code Specification}
+
+\begin{definition}[BCH Code]
+\label{def:bch}
+The error-correcting pipeline utilizes a Bose-Chaudhuri-Hocquenghem (BCH) code over the Galois Field $\bbF_{2^m}$:
+\begin{equation}
+\calC_{\text{BCH}}(n, k, t) \subset \bbF_2^n
+\end{equation}
+where $n$ is the block length, $k$ is the message dimension, and $t$ is the maximum correctable bit-error threshold.
+\end{definition}
+
+\subsection{Enrollment Phase}
+
+\begin{algorithm}[htbp]
+\caption{BBID Enrollment}
+\label{alg:enroll}
+\begin{algorithmic}[1]
+\State Client captures composite feature vector $\bX$ and generates noisy biometric bit-string $\bw$
+\State Server randomly selects canonical identity codeword $\bc \in \calC_{\text{BCH}}$
+\State Server computes public blinding factor $\bdelta = \bw \oplus \bc$
+\State Server stores $\bdelta$ in Neo4j graph database, linked to visitor node
+\State Server stores $H(\bc)$ as verification anchor (one-way cryptographic hash)
+\State \textbf{Invariant:} Neither $\bX$ nor $\bw$ is ever written to disk
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Authentication Phase}
+
+\begin{algorithm}[htbp]
+\caption{BBID Authentication}
+\label{alg:auth}
+\begin{algorithmic}[1]
+\State Returning user captures new biometric vector $\bX'$ and generates query bit-string $\bw'$
+\State Server retrieves historic blinding factor $\bdelta$ from Neo4j
+\State Server extracts noisy codeword: $\bc' = \bw' \oplus \bdelta$
+\State Server decodes: $\hat{\bc} = \Decode_{\text{BCH}}(\bc')$
+\If{$d_H(\bc', \bc) \leq t$}
+    \State $\hat{\bc} = \bc$ \Comment{Error correction succeeds}
+    \If{$H(\hat{\bc}) = H(\bc)$}
+        \State \Return Access granted, canonical codeword $\bc$ released
+    \EndIf
+\Else
+    \State \Return Authentication failed
+\EndIf
+\end{algorithmic}
+\end{algorithm}
+
+The error vector $\be = \bc' \oplus \bc$ represents the error introduced by behavioral and physical noise between the two sessions. If the behavioral drift is within the error threshold of the BCH codebook, satisfying $d_H(\bc', \bc) \leq t$, the decoder corrects the error vector and the algebraic code snaps $\bc'$ back to the exact canonical codeword.
+
+\subsection{Advanced Error Correction}
+
+To handle non-linear noise in unconstrained real-world scenarios, the pipeline is enhanced using adaptive quantization (such as AdaMTrans) and deep learning-based error correction (such as a Neural Min-Sum LDPC decoder). These advanced decoders improve noise tolerance while preserving the entropy bounds of the underlying cryptographic keys.
+
+%=====================================================================
+\section{The BBES Mapping Function (Bits to Braille)}
+%=====================================================================
+
+\subsection{Overview}
+
+Once the canonical codeword $\bc$ is successfully recovered and cryptographically verified, it is mapped to a human-readable, visually auditable identifier. The Biometric/Behavioral Encryption Standard (BBES) maps the codeword to the Unicode Braille Patterns block (U+2800 to U+28FF). Each 8-dot Braille cell natively represents exactly 1 byte ($2^8 = 256$ possibilities), providing an exceptionally dense and deterministic visualization of binary entropy.
+
+\subsection{Byte Segmentation}
+
+\begin{definition}[Byte Segmentation]
+\label{def:bytes}
+The canonical bitstring $\bc$ is divided into a sequence of $m$ bytes:
+\begin{equation}
+\bc = b_1 \| b_2 \| \cdots \| b_m, \quad b_j \in \{0, 1\}^8
+\end{equation}
+\end{definition}
+
+\subsection{Bit-to-Dot Mapping}
+
+The individual bits of $b_j$ map directly to the standardized ISO/IEC 15924 Braille dot numbering grid:
+
+\begin{center}
+\begin{tabular}{c c c}
+(Bit 0) Dot 1 & $\bullet$ & Dot 4 (Bit 3) \\
+(Bit 1) Dot 2 & $\bullet$ & Dot 5 (Bit 4) \\
+(Bit 2) Dot 3 & $\bullet$ & Dot 6 (Bit 5) \\
+(Bit 6) Dot 7 & $\bullet$ & Dot 8 (Bit 7)
+\end{tabular}
+\end{center}
+
+\subsection{Mathematical Mapping Function}
+
+\begin{definition}[BBES Mapping]
+\label{def:bbes}
+The mathematical mapping function $\calM_{\text{BBES}}: \{0, 1\}^8 \rightarrow \text{U+2800--U+28FF}$ maps each byte to its corresponding Unicode scalar point:
+\begin{equation}
+\calM_{\text{BBES}}(b_j) = \text{U+2800} + \sum_{i=0}^{7} b_{j,i} \cdot 2^i
+\end{equation}
+\end{definition}
+
+For a 64-bit canonical key, the mapping yields an 8-character Braille signature. For a 128-bit key, the mapping generates a 16-character Braille signature. This signature serves as a deterministic, visually verifiable representation of the user's hardened biometric identity.
+
+%=====================================================================
+\section{Entropy, Uniqueness, and Collision Bounds}
+%=====================================================================
+
+\subsection{Collision Probability Analysis}
+
+\begin{theorem}[Collision Bound]
+\label{thm:collision}
+Let $N$ be the active user population size and $K = 2^k$ be the total available keyspace, where $k$ is the number of active message bits in the canonical codeword $\bc$. The probability of at least one identity collision $P(\text{collision})$ is bounded by:
+\begin{equation}
+P(\text{collision}) \approx 1 - \exp\left(-\frac{N(N-1)}{2K}\right) \approx 1 - \exp\left(-\frac{N^2}{2^{k+1}}\right)
+\end{equation}
+\end{theorem}
+
+Because the Fuzzy Commitment Scheme binds the high-dimensional biometric vector to a strict, error-corrected codeword space, the effective entropy of the final token is defined entirely by the message length $k$ of the code, not the raw dimension $D$ of the biometric input.
+
+\subsection{Collision Risk Profiles}
+
+\begin{table}[htbp]
+\centering
+\caption{Collision risk profiles across signature lengths and population scales.}
+\label{tab:collision}
+\begin{tabular}{@{}ccccp{3.5cm}@{}}
+\toprule
+\textbf{Signature} & \textbf{Bits ($k$)} & \textbf{Population ($N$)} & \textbf{$P$(collision)} & \textbf{Classification} \\
+\midrule
+8 Cells & 64 & $10^3$ & $\approx 2^{-43}$ & Secure Proof-of-Concept \\
+8 Cells & 64 & $10^9$ & $\approx 2^{-3}$ & Degraded Risk \\
+16 Cells & 128 & $8 \times 10^9$ & $\approx 2^{-62}$ & Planetary-Scale Uniqueness \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{corollary}
+By transitioning to a 16-cell Braille signature (providing 128 bits of cryptographic entropy), the BBID protocol eliminates collision vectors across the entire population of the planet. This holds even when allowing for a $t$-bit error correction margin in the behavioral biometric layer.
+\end{corollary}
+
+%=====================================================================
+\section{Architectural Resolution of the Projection Seeding Dilemma}
+%=====================================================================
+
+\subsection{The Challenge}
+
+A key architectural challenge in implementing the Signed Random Projection LSH step is the generation, distribution, and preservation of the random hyperplanes $\calR$. Because LSH requires that the exact same projection hyperplanes be used during both enrollment and authentication to preserve angular distances, the seeding mechanism is a critical security boundary.
+
+\subsection{Threats to Random Projection Integrity}
+
+\subsubsection{Model Inversion and Reconstruction Attacks}
+
+In a model inversion attack, an adversary compromises the database and attempts to reconstruct the original continuous biometric vector $\bB$ from the stored templates. In a deep hashing or LSH framework, if the adversary has black-box query access or knows the projection hyperplanes $\calR$, they train surrogate generative models or use diffusion-based denoising frameworks (such as DHMI) to reconstruct highly realistic original biometric inputs, leading to permanent identity compromise.
+
+\subsubsection{Pseudo-Inverse and Full-Rank Inversion Attacks}
+
+If the projection matrix $\bR$ is public or statically known, an attacker exploits the distance-preserving properties of the projection to construct a set of pseudo-inverses. The attacker then applies optimization algorithms to select a set of probable neighbors from independent public datasets and linearly composes an estimate $\hat{\bB}$ of the genuine vector $\bB$.
+
+\begin{proposition}[Attack via Record Multiplicity]
+\label{prop:arm}
+If a user's biometrics are projected using $m$ different projection matrices $\bR^{(1)}, \bR^{(2)}, \ldots, \bR^{(m)}$ across different applications, and an attacker compromises these databases, they horizontally concatenate the projection matrices:
+\begin{equation}
+\bR_{\text{concat}} = \begin{bmatrix} \bR^{(1)} \\ \bR^{(2)} \\ \vdots \\ \bR^{(m)} \end{bmatrix}
+\end{equation}
+Once $\rank(\bR_{\text{concat}}) = d_B$, the concatenated matrix achieves full rank, making the linear projection completely reversible and exposing the raw biometric data.
+\end{proposition}
+
+\subsection{Seeding Architectures}
+
+\subsubsection{Option A: Client-Side Static Bundling}
+
+In this model, the projection seed and hyperplane generation code are packaged directly inside the client application.
+
+\textbf{Vulnerability}: This approach violates Zero Trust principles. Because client-side code is execution-exposed, any static seed or hardcoded matrix is extractable by an attacker using standard debugging and memory inspection tools.
+
+\textbf{Implications}: Once the seed is compromised, the hyperplanes $\calR$ for all users are exposed, enabling pseudo-inverse estimation, ARM attacks, and reconstruction of the entire user base's templates.
+
+\subsubsection{Option B: Dynamic Serving via Cloudflare Worker}
+
+In this model, the projection matrices are generated on-the-fly by an edge-computing instance upon session initialization.
+
+\textbf{Usability Failure}: If the Worker generates entirely random, ephemeral hyperplanes $\calR_{\text{new}}$ for every session, the system's usability collapses. A completely random, non-persistent matrix makes it impossible for a returning user to snap back to their canonical codeword $\bc$.
+
+\textbf{Vulnerability}: Storing a unique projection matrix $\calR_u$ for every user introduces significant key management overhead, scales poorly, and recreates the tracking and security concerns associated with storing raw biometric templates.
+
+\subsection{Proposed Architecture: Edge-Derived Deterministic User-Specific Projection (ED-DUP)}
+
+To resolve these vulnerabilities while maintaining a zero-cookie, zero-local-storage architecture, the BBID protocol implements an Edge-Derived Deterministic User-Specific Projection (ED-DUP) paradigm. This approach leverages a Cloudflare Worker acting as a Zero Trust security gateway, deriving user-specific, cryptographically isolated projection hyperplanes on-the-fly.
+
+\subsubsection{Step 1: Secure Identifier Retrieval}
+
+When a user initiates a session, they submit a public identifier $\text{ID}_u$. The Cloudflare Worker queries the Neo4j graph database to verify the node's existence and retrieves the user-specific salt $s_u$ and template version parameter $v_u$.
+
+\subsubsection{Step 2: Key Derivation Function Pipeline}
+
+\begin{definition}[User-Specific Seed Derivation]
+\label{def:seed}
+The Worker utilizes HKDF-SHA256 to compute a user-specific seed, driven by a high-entropy Master System Secret $M_{\text{sys}}$ stored in the Worker's Trusted Execution Environment (TEE):
+\begin{equation}
+\text{seed}_u = \HKDF\text{-SHA256}(M_{\text{sys}}, \text{info} = \text{ID}_u \| s_u \| v_u)
+\end{equation}
+\end{definition}
+
+By binding $\text{ID}_u$ and $v_u$ into the derivation path, every user is assigned a unique, mathematically isolated projection space. If a user's template is compromised, the server increments $v_u \leftarrow v_u + 1$, instantly deriving a new, uncorrelated projection matrix $\calR'_u$, achieving clean revocability.
+
+\subsubsection{Step 3: Deterministic Hyperplane Expansion}
+
+The derived seed $\text{seed}_u$ is loaded into a cryptographically secure Deterministic Random Bit Generator (DRBG) configured in AES-CTR mode:
+\begin{equation}
+\calR_u = \DRBG_{\text{AES-CTR}}(\text{seed}_u) \in \bbR^{k \times d_B}
+\end{equation}
+
+To ensure algebraic correctness and prevent modular bias, the seed generation is validated using a symbolic modular inversion mapping over a prime modulus $p$:
+\begin{equation}
+\text{seed}_u' = \ModInv(\text{seed}_u, p), \quad p = 3^m
+\end{equation}
+
+\subsubsection{Step 4: Ephemeral Execution and Bandwidth Optimization}
+
+To minimize network overhead, the Worker transmits only the derived 256-bit seed $\text{seed}_u$ to the client over TLS. The client-side environment runs a lightweight WebAssembly-compiled execution of the same AES-CTR-DRBG, expanding $\text{seed}_u$ into the identical projection matrix $\calR_u$ locally in ephemeral memory.
+
+Once the projection is complete, $\calR_u$ and $\text{seed}_u$ are immediately zeroed out in the client's memory. Only the non-reversible, locality-preserved bitstring $\bw$ (or the blinding factor $\bdelta$) is transmitted to the server, satisfying the principle of least privilege.
+
+\subsection{Comparative Security Analysis}
+
+\begin{table}[htbp]
+\centering
+\caption{Comparative security analysis of seeding architectures.}
+\label{tab:security}
+\begin{tabular}{@{}p{2.8cm}p{3cm}p{3cm}p{3.5cm}@{}}
+\toprule
+\textbf{Metric} & \textbf{Static Bundle} & \textbf{Naive Dynamic} & \textbf{ED-DUP} \\
+\midrule
+Reverse Engineering & High & Low & None \\
+Cross-Matching & High & None & Absolute Protection \\
+ARM Attacks & High & Low & Immune \\
+Usability & High & Zero & High \\
+Revocability & Low & Complex & Instantaneous \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%=====================================================================
+\section{Operational Deployment}
+%=====================================================================
+
+\subsection{Database Schema Integration}
+
+The visitor node schema in Neo4j stores:
+\begin{itemize}
+    \item Public blinding factor $\bdelta$
+    \item Salt $s_u$
+    \item Version integer $v_u$
+    \item SHA-256 validation anchor $H(\bc)$
+\end{itemize}
+
+\textbf{No raw biometric parameters are permitted within the database.}
+
+\subsection{Edge Worker Configuration}
+
+The Cloudflare Worker is provisioned with a cryptographically secure, hardware-backed environment variable storing $M_{\text{sys}}$. The Worker computes the HKDF-SHA256 derivation path dynamically upon verifying the client's identity.
+
+\subsection{Wasm Client Projection Engine}
+
+The client-side WebAssembly library contains:
+\begin{enumerate}
+    \item Optimized AES-CTR-DRBG expansion engine
+    \item Capability to receive the 32-byte seed $\text{seed}_u$ over TLS
+    \item Expansion of $\text{seed}_u$ to projection matrix $\calR_u$
+    \item Local projection of measured vector $\bB$
+    \item Immediate zeroization of $\calR_u$ and $\text{seed}_u$
+\end{enumerate}
+
+%=====================================================================
+\section{Recovery and Re-Enrollment Protocol}
+%=====================================================================
+
+\subsection{The Behavioral Drift Problem}
+
+Legitimate, long-term behavioral drift presents a fundamental challenge to the zero-storage architecture. When a user switches from a desktop keyboard to a mobile touchscreen, sustains a hand injury, or undergoes natural motor adaptation, the Hamming distance between the enrolled bitstring $\bw$ and the query bitstring $\bw'$ may permanently exceed the BCH error correction threshold $t$:
+\begin{equation}
+d_H(\bw, \bw') > t \implies \Decode_{\text{BCH}}(\bw' \oplus \bdelta) \neq \bc
+\end{equation}
+Under a strict zero-storage architecture, the user is locked out with no recovery path, as the system stores neither passwords, recovery keys, nor out-of-band contact methods.
+
+\subsection{Recovery Threat Model}
+
+Recovery mechanisms must satisfy three constraints:
+\begin{enumerate}
+    \item \textbf{No tracking vector reintroduction}: Recovery must not create persistent identifiers that undermine the zero-cookie architecture.
+    \item \textbf{No raw biometric storage}: Recovery must not store $\bX$, $\bw$, or $\bB$ as fallback templates.
+    \item \textbf{Cryptographic continuity}: The recovered identity must bind to the same canonical codeword $\bc$ to preserve the user's established identity graph.
+\end{enumerate}
+
+\subsection{Multi-Tier Recovery Architecture}
+
+\subsubsection{Tier 1: Graceful Tolerance Widening}
+
+When authentication fails with $d_H(\bw, \bw') \in (t, t + \Delta]$, the server temporarily widens the tolerance window:
+\begin{equation}
+t_{\text{effective}} = t + \Delta, \quad \Delta \in \mathbb{N}
+\end{equation}
+If $d_H(\bw, \bw') \leq t + \Delta$, authentication succeeds. The server then triggers a silent re-enrollment:
+\begin{equation}
+\bdelta_{\text{new}} = \bw' \oplus \bc
+\end{equation}
+updating the blinding factor to reflect the user's new behavioral baseline. The tolerance window $\Delta$ is bounded by the code's minimum distance to prevent cross-user collision:
+\begin{equation}
+\Delta < d_{\min}(\calC_{\text{BCH}}) - t
+\end{equation}
+
+\subsubsection{Tier 2: Hardware Subspace Fallback}
+
+If behavioral drift exceeds $t + \Delta$, the system falls back to the hardware subspace $\bH$ as a secondary identity signal. The hardware bitstring $\bw_H$ is computed via a separate SRP-LSH projection:
+\begin{equation}
+\bw_H = h_{\text{SRP}}(\bH)
+\end{equation}
+If $d_H(\bw_H, \bw_H^{\text{enrolled}}) \leq t_H$, the hardware subspace alone authenticates the user, triggering behavioral re-enrollment. This fallback is only available in deployment tiers where $\|\bSigma_H\|$ is bounded.
+
+\subsubsection{Tier 3: Progressive Re-Enrollment}
+
+When both behavioral and hardware signals fail, the user enters a progressive re-enrollment phase:
+\begin{enumerate}
+    \item The system collects $m$ consecutive behavioral samples $\{\bB_1, \bB_2, \ldots, \bB_m\}$ over a session.
+    \item A consensus bitstring is computed via majority voting:
+    \begin{equation}
+    \bw_{\text{consensus}}[i] = \text{majority}\left(\{h_{\text{SRP}}(\bB_j)[i]\}_{j=1}^{m}\right)
+    \end{equation}
+    \item The consensus bitstring is compared against the enrolled $\bw$ with a relaxed threshold $t_{\text{progressive}} > t$.
+    \item If matched, the blinding factor is updated and the version parameter is incremented:
+    \begin{equation}
+    v_u \leftarrow v_u + 1, \quad \bdelta_{\text{new}} = \bw_{\text{consensus}} \oplus \bc
+    \end{equation}
+\end{enumerate}
+
+\subsubsection{Tier 4: Out-of-Band Recovery}
+
+As a last resort, the system supports out-of-band recovery without reintroducing persistent tracking:
+\begin{itemize}
+    \item \textbf{One-time recovery token}: A single-use, time-limited token delivered via email or SMS.
+    \item \textbf{Social recovery}: A quorum of $q$ trusted contacts collectively authorize re-enrollment via threshold signatures.
+    \item \textbf{Hardware token}: A FIDO2/WebAuthn physical security key serves as a recovery authenticator.
+\end{itemize}
+
+\subsection{Version Rotation Protocol}
+
+When re-enrollment is triggered (via any tier), the version parameter is incremented atomically: $v_u \leftarrow v_u + 1$. This immediately derives a new projection matrix $\calR'_u$ via the HKDF pipeline, ensuring:
+\begin{enumerate}
+    \item The old projection matrix $\calR_u$ is cryptographically severed from the new identity.
+    \item Any compromised old templates become useless.
+    \item The user's identity graph in Neo4j preserves continuity via the same node ID.
+\end{enumerate}
+
+\begin{table}[htbp]
+\centering
+\caption{Security analysis of recovery tiers.}
+\label{tab:recovery}
+\begin{tabular}{@{}p{3.5cm}p{3cm}p{2.5cm}p{3.5cm}@{}}
+\toprule
+\textbf{Recovery Tier} & \textbf{Tracking Risk} & \textbf{Friction} & \textbf{Security Degradation} \\
+\midrule
+Tier 1: Tolerance Widening & None & Zero & Minimal ($\Delta$-bit reduction) \\
+Tier 2: Hardware Fallback & None & Zero & Moderate \\
+Tier 3: Progressive Re-Enrollment & None & Low & Moderate \\
+Tier 4: Out-of-Band Recovery & Transient & High & High \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%=====================================================================
+\section{Behavioral Deepfakes and Adversarial Cloning}
+%=====================================================================
+
+\subsection{Threat Model: The Behavioral Deepfake}
+
+A critical security consideration for any behavioral biometric system is the adversarial synthesis of human-like behavior. If an attacker trains a sequence-to-sequence generative model (transformer, diffusion network, or GAN) on a target user's behavioral data, they construct a \textbf{behavioral deepfake}---an AI system that synthesizes the user's stochastic behavioral subspace $\bB$ with sufficient fidelity to pass biometric authentication.
+
+This attack vector is distinct from traditional credential theft or template reconstruction. The adversary does not steal a static secret; they clone the dynamic process that generates the secret.
+
+\subsection{Transformer Architecture for Behavioral Cloning}
+
+\subsubsection{Keystroke Dynamics Synthesis}
+
+A transformer models the temporal distribution of keystroke events as a sequence-to-sequence problem. Given a dataset of key-pair specific flight times $\{t_{ij}\}$ for key transitions $i \rightarrow j$, the model learns the user's log-normal latency distribution:
+\begin{equation}
+P(\Delta t \mid k_i, k_j) \sim \text{LogNormal}(\mu_{ij}, \sigma_{ij}^2)
+\end{equation}
+The transformer captures higher-order dependencies including digraph-specific timing, cognitive pause modeling, and rhythm preservation across typing bursts.
+
+\subsubsection{Mouse Trajectory Generation}
+
+For mouse movement synthesis, diffusion networks or GANs generate trajectories that satisfy Fitts' Law:
+\begin{equation}
+T = a + b \log_2\left(\frac{2D}{W}\right)
+\end{equation}
+where $T$ is movement time, $D$ is distance to target, and $W$ is target width. The generated trajectories exhibit organic acceleration curves, micro-corrections, and natural hand jitter consistent with human motor control.
+
+\subsubsection{Formal Cloning Objective}
+
+\begin{definition}[Cloning Objective]
+\label{def:cloning}
+Let $\mathcal{D} = \{(\bB_1, \bB_2, \ldots, \bB_T)\}$ be a dataset of behavioral sequences from the target user. The transformer is trained to minimize:
+\begin{equation}
+\mathcal{L} = -\sum_{t=1}^{T} \log P_\theta(\bB_t \mid \bB_{<t}, \mathbf{c}_{\text{ctx}})
+\end{equation}
+where $\mathbf{c}_{\text{ctx}}$ is a conditioning context and $\theta$ are the model parameters. At convergence:
+\begin{equation}
+D_{\text{KL}}(P_{\text{user}}(\bB) \| P_\theta(\hat{\bB})) < \epsilon
+\end{equation}
+\end{definition}
+
+\subsection{The Infrastructure Gap}
+
+Even with perfect behavioral synthesis, the cloned behavior must be executed through a browser automation framework. This introduces detectable artifacts:
+\begin{itemize}
+    \item \textbf{Browser environment leakage}: WebDriver detection, CDP side-channels, property enumeration anomalies.
+    \item \textbf{Network fingerprinting}: TLS (JA4) signatures, HTTP/2 frame patterns, WebSocket behavior.
+    \item \textbf{Hardware subspace inconsistency}: $\bH_{\text{automation}} \neq \bH_{\text{user}}$.
+\end{itemize}
+
+\subsection{The Perfect Digital Double Stack}
+
+To achieve total mimicry, the adversary must combine behavioral cloning with infrastructure stealth tools that:
+\begin{itemize}
+    \item Rewrite browser primitive JavaScript properties before page initialization.
+    \item Override object behaviors to mask automation flags.
+    \item Spoof WebGL, canvas, and audio fingerprints to match the target user's $\bH$.
+\end{itemize}
+
+\subsection{Implications for the BBID Protocol}
+
+\subsubsection{Successful Spoofing Scenario}
+
+If the adversary successfully combines behavioral cloning with architectural stealth, the synthesized behavioral stream $\hat{\bB}$ passes through the SRP-LSH projection:
+\begin{equation}
+\hat{\bw} = h_{\text{SRP}}(\hat{\bB})
+\end{equation}
+The resulting bitstring satisfies $d_H(\hat{\bw}, \bw_{\text{enrolled}}) \leq t$, the BCH decoder recovers $\bc$, and the server authenticates the AI agent as the genuine user.
+
+\subsubsection{Entropy Reduction Under Cloning}
+
+\begin{theorem}[Entropy Reduction]
+\label{thm:entropy}
+The min-entropy of $\bB$ conditioned on the model parameters $\theta$ is bounded by:
+\begin{equation}
+H_\infty(\bB \mid \theta) \leq H_\infty(\bB) - I(\bB; \theta)
+\end{equation}
+where $I(\bB; \theta)$ is the mutual information between the behavioral distribution and the model parameters. As model fidelity improves, $I(\bB; \theta)$ increases, reducing the effective security margin.
+\end{theorem}
+
+\subsection{Countermeasures}
+
+\subsubsection{Liveness Detection}
+
+The BBID protocol incorporates liveness detection to distinguish genuine human behavior from synthesized behavior:
+\begin{itemize}
+    \item \textbf{Micro-timing analysis}: Statistical artifacts in inter-event timing distributions.
+    \item \textbf{Cross-modal consistency}: Correlations between typing, mouse, and scroll patterns.
+    \item \textbf{Challenge-response perturbations}: Randomized UI perturbations with adaptation latency verification.
+\end{itemize}
+
+\subsubsection{Adversarial Training}
+
+The projection matrix $\calR_u$ is adversarially trained to maximize sensitivity to synthetic behavioral artifacts:
+\begin{equation}
+\calR_u^* = \arg\max_{\calR} \mathbb{E}_{\bB \sim P_{\text{human}}} \left[d_H(h_{\text{SRP}}(\bB), h_{\text{SRP}}(\hat{\bB}_{\text{AI}}))\right]
+\end{equation}
+This creates a projection space where AI-generated behavior maps to a distinct region from genuine human behavior.
+
+\subsubsection{Multi-Modal Verification and Anomaly Detection}
+
+Defense-in-depth combines hardware attestation (TPM-backed device binding), biometric fusion (face, voice), session velocity monitoring, behavioral drift tracking, and graph-based anomaly detection via the Neo4j identity graph.
+
+\begin{table}[htbp]
+\centering
+\caption{Behavioral cloning arms race: attacker vs. defender capabilities.}
+\label{tab:armsrace}
+\begin{tabular}{@{}p{3cm}p{4cm}p{4.5cm}@{}}
+\toprule
+\textbf{Capability} & \textbf{Attacker} & \textbf{Defender} \\
+\midrule
+Keystroke timing & Log-normal distribution fitting & Micro-timing anomaly detection \\
+Mouse trajectories & Diffusion/GAN synthesis & Cross-modal consistency checks \\
+Hardware fingerprint & Stealth browser patching & TPM-backed hardware attestation \\
+Network fingerprint & TLS stack modification & JA4 fingerprint monitoring \\
+Liveness & Adversarial generator training & Challenge-response perturbations \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%=====================================================================
+\appendix
+\section{Unsupervised Behavioral Inference and Privacy Implications}
+%=====================================================================
+
+\subsection{Theoretical Framework}
+
+While the BBID protocol is intentionally designed for identity verification rather than demographic profiling, it is important to acknowledge the theoretical possibility of inferring physical or demographic attributes from behavioral biometric data through unsupervised learning techniques.
+
+\subsection{Covariance Structure and Demographic Correlation}
+
+The stochastic behavioral subspace $\bB$ is governed by a multivariate Gaussian distribution with covariance matrix $\bSigma$. Research in keystroke dynamics has demonstrated that the covariance structure may exhibit statistically significant differences across demographic groups.
+
+\begin{definition}[Correlation Matrix]
+\label{def:correlation}
+The correlation matrix derived from the covariance matrix $\bSigma$ is:
+\begin{equation}
+\mathbf{C} = \diag(\bSigma)^{-1/2} \bSigma \diag(\bSigma)^{-1/2}
+\end{equation}
+\end{definition}
+
+The correlation matrix $\mathbf{C}$ may fundamentally differ between demographic groups, suggesting that unsupervised clustering could reveal natural groupings in behavioral space.
+
+\subsection{Unsupervised Learning Approaches}
+
+\subsubsection{k-Means Clustering}
+
+The k-means algorithm partitions the feature space $\bbR^D$ into $k$ clusters by minimizing within-cluster variance:
+\begin{equation}
+\arg\min_{\mathbf{S}} \sum_{i=1}^{k} \sum_{\bx \in S_i} \|\bx - \bmu_i\|^2
+\end{equation}
+
+\subsubsection{Gaussian Mixture Models}
+
+GMM extends k-means by modeling the data as a mixture of Gaussian distributions with cluster-specific covariance matrices:
+\begin{equation}
+P(\bx) = \sum_{i=1}^{k} \pi_i \calN(\bx \mid \bmu_i, \bSigma_i)
+\end{equation}
+
+\subsubsection{DBSCAN}
+
+DBSCAN identifies clusters as dense regions separated by sparse regions, requiring no prior specification of $k$:
+\begin{equation}
+\text{Cluster} = \{\bx \mid \text{density}(\bx) \geq \epsilon \text{ and connected via density-reachable points}\}
+\end{equation}
+
+\subsubsection{Spectral Clustering}
+
+Spectral clustering leverages the eigenstructure of the similarity matrix:
+\begin{equation}
+\mathbf{L} = \mathbf{D} - \mathbf{W}, \quad W_{ij} = \exp\left(-\frac{\|\bx_i - \bx_j\|^2}{2\sigma^2}\right)
+\end{equation}
+
+\subsection{Finger Length Inference Feasibility}
+
+Among potential demographic inferences, finger length estimation is more technically feasible than gender classification for the following reasons:
+
+\textbf{Mechanical linkage}: Finger length directly determines key reach patterns, flight time distributions for specific key pairs, force/pressure profiles, and hand posture patterns.
+
+\textbf{Mathematical formulation}: Given a feature vector $\bB$ containing key-pair specific flight times, finger length $L$ is modeled as a latent variable:
+\begin{equation}
+\bB = f(L, \boldeta) + \bepsilon, \quad \bepsilon \sim \calN(\mathbf{0}, \bSigma)
+\end{equation}
+where $f(\cdot)$ is a non-linear mapping from finger length to behavioral features and $\boldeta$ represents confounding variables.
+
+\subsection{Technical Challenges}
+
+Several challenges limit the practical accuracy of unsupervised demographic inference:
+
+\begin{enumerate}
+    \item \textbf{Feature space dimensionality}: The BBID specification defines $\bX \in \bbR^D$ where $D = d_H + d_B$. For implementations following the specification, $D$ is typically less than 50. For unsupervised demographic clustering to achieve statistically significant cluster separation, higher-dimensional feature spaces ($D \gg 100$) are required.
+    
+    \item \textbf{Sample size requirements}: Stable cluster structure requires $N \gg 1000$ users to overcome the curse of dimensionality.
+    
+    \item \textbf{Cluster overlap}: Behavioral clusters exhibit significant overlap due to confounding variables.
+    
+    \item \textbf{Confounding variables}: Typing experience, physical disabilities, keyboard layout, and environmental factors introduce variance that masks demographic signals.
+    
+    \item \textbf{Non-stationarity}: Behavioral patterns change over time due to fatigue, learning, and adaptation.
+\end{enumerate}
+
+\subsection{Privacy Implications}
+
+The BBID protocol intentionally avoids demographic inference for critical reasons:
+
+\begin{itemize}
+    \item \textbf{Privacy-by-design}: The system verifies identity, not profiles users.
+    \item \textbf{Regulatory compliance}: Demographic inference may violate privacy regulations.
+    \item \textbf{Adversarial risk}: If demographic inference is possible, adversaries exploit the same techniques.
+    \item \textbf{Trust erosion}: User trust depends on understanding that behavioral data is used only for identity verification.
+\end{itemize}
+
+\subsection{Mitigation Strategies}
+
+To prevent unsupervised demographic inference while maintaining identity verification capability:
+
+\begin{enumerate}
+    \item \textbf{Feature dimensionality reduction}: Use random projection to reduce $D$ to a dimension where demographic signals are lost but identity signals remain.
+    \item \textbf{Differential privacy}: Add calibrated noise to behavioral features.
+    \item \textbf{Adversarial debiasing}: Train the projection matrix to minimize demographic information leakage.
+    \item \textbf{Feature selection}: Exclude features with high demographic correlation.
+    \item \textbf{Covariance regularization}: Apply regularization to $\bSigma$ to prevent overfitting to demographic patterns.
+\end{enumerate}
+
+\subsection{Conclusion}
+
+While unsupervised learning techniques could theoretically reveal demographic structure in behavioral biometric data---particularly for anthropometric attributes like finger length---the BBID protocol explicitly avoids this capability through architectural design choices. The privacy-preserving nature of the system is a fundamental design principle that distinguishes BBID from surveillance-oriented behavioral analysis systems.
+
+Future research should focus on quantifying the trade-off between identity verification accuracy and demographic leakage, developing provable privacy guarantees for behavioral biometric systems, and establishing standards for acceptable feature extraction in privacy-preserving authentication protocols.
+
+%=====================================================================
+\begin{thebibliography}{99}
+
+\bibitem{cloudflare-zt}
+Zero Trust Security | What's a Zero Trust Network? --- Cloudflare.
+\url{https://www.cloudflare.com/learning/security/glossary/what-is-zero-trust/}
+
+\bibitem{mdpi-keygen}
+A Secure Biometric Key Generation Mechanism via Deep Learning and Its Application.
+\textit{MDPI Applied Sciences}, 11(18):8497, 2021.
+
+\bibitem{devto-biometrics}
+Biometrics for Robots: Why Every Humanoid AI Needs a Hardware Fingerprint.
+\url{https://dev.to/scottcjn/biometrics-for-robots-why-every-humanoid-ai-needs-a-hardware-fingerprint-208g}
+
+\bibitem{etri-kdf}
+Construction of a New Biometric-Based Key Derivation Function and Its Application.
+\textit{ETRI Journal}, 2018.
+
+\bibitem{arxiv-mia}
+Model Inversion Attacks Meet Cryptographic Fuzzy Extractors.
+\textit{arXiv:2510.25687}, 2025.
+
+\bibitem{ecu-cancelable}
+A cancelable biometric authentication system based on feature-adaptive random projection.
+Edith Cowan University, 2019.
+
+\bibitem{rg-reconstruction}
+Biometric Template-Based Reconstruction Attack in Machine Learning.
+\textit{ResearchGate}, 2024.
+
+\bibitem{mdpi-touch}
+Biometric Template Protection for Dynamic Touch Gestures Based on Fuzzy Commitment Scheme and Deep Learning.
+\textit{MDPI Mathematics}, 10(3):362, 2022.
+
+\bibitem{ieee-twofactor}
+Two-Factor Fuzzy Commitment for Unmanned IoT Devices Security.
+\textit{IEEE Xplore}, 2019.
+
+\bibitem{arxiv-wifakey}
+WiFaKey: Generating Cryptographic Keys from Face in the Wild.
+\textit{arXiv:2407.14804}, 2024.
+
+\bibitem{pmc-palmprint}
+Reinforced Palmprint Reconstruction Attacks in Biometric Systems.
+\textit{PMC}, 2022.
+
+\bibitem{rg-dynamic}
+Dynamic random projection for biometric template protection.
+\textit{ResearchGate}, 2010.
+
+\bibitem{ieee-noninvertible}
+A Non-Invertible Secure Template Generation Using AES Encrypted MCC and Random Triangle Projection.
+\textit{IEEE Xplore}, 2024.
+
+\bibitem{scholarpedia}
+Cancelable biometrics --- Scholarpedia.
+\url{http://www.scholarpedia.org/article/Cancelable_biometrics}
+
+\bibitem{pinecone-lsh}
+Random Projection for Locality Sensitive Hashing --- Pinecone.
+\url{https://www.pinecone.io/learn/series/faiss/locality-sensitive-hashing-random-projection/}
+
+\bibitem{iris-attack}
+Efficient Known-Sample Attack for Distance-Preserving Hashing Biometric Template Protection Schemes.
+\textit{IRIS}, 2020.
+
+\bibitem{unr-spiral}
+Spiral Cube for Biometric Template Protection.
+\textit{UNR CSE}, 2012.
+
+\bibitem{arxiv-orthonormal}
+A New Biometric Template Protection using Random Orthonormal Projection and Fuzzy Commitment.
+\textit{arXiv:1904.00264}, 2019.
+
+\bibitem{liberty-lean}
+Dense Fast Random Projections and Lean Walsh Transforms.
+Edo Liberty, 2008.
+
+\bibitem{cosic-dynamic}
+Dynamic Random Projection for Biometric Template Protection.
+\textit{COSIC}, KU Leuven, 2010.
+
+\bibitem{github-distaware}
+Ur-Eine/distribution-aware-LSH --- GitHub.
+\url{https://github.com/Ur-Eine/distribution-aware-LSH}
+
+\bibitem{neu-kmeans}
+A Deterministic Method for Initializing K-means Clustering.
+Northeastern University, 2004.
+
+\bibitem{juels-fuzzy}
+A fuzzy commitment scheme.
+Ari Juels and Martin Wattenberg, \textit{ACM CCS}, 1999.
+
+\bibitem{scitepress-sal}
+SCIENCE AND TECHNOLOGY PUBLICATIONS --- SciTePress, 2015.
+
+\bibitem{utgjiu-mceliece}
+A Fuzzy Commitment Scheme with McEliece's Cipher.
+\textit{UTGJI}, 2010.
+
+\bibitem{utoronto-analysis}
+An Analysis of Random Projection for Changeable and Privacy-Preserving Biometric Verification.
+University of Toronto, 2009.
+
+\bibitem{dnb-rsa}
+Two-factor-based RSA key generation from fingerprint biometrics and password for secure communication.
+\textit{DNB}, 2022.
+
+\bibitem{usenix-practical}
+The Practical Subtleties of Biometric Key Generation.
+\textit{USENIX Security}, 2008.
+
+\bibitem{cloudflare-roadmap}
+A Roadmap to Zero Trust Architecture --- Cloudflare.
+\url{https://cf-assets.www.cloudflare.com/.../White-Paper-Zero-Trust-Roadmap-v2.pdf}
+
+\bibitem{rg-eclariss}
+ECLARISS: Security-by-Design Smart-Home Surveillance System with Edge Dynamic Biohashing.
+\textit{ResearchGate}, 2024.
+
+\bibitem{wikipedia-mia}
+Model inversion attack --- Wikipedia.
+\url{https://en.wikipedia.org/wiki/Model_inversion_attack}
+
+\bibitem{rg-dhmi}
+Model Inversion Attack Against Deep Hashing.
+\textit{ResearchGate}, 2025.
+
+\bibitem{arxiv-dhmi}
+Model Inversion Attack Against Deep Hashing.
+\textit{arXiv:2511.12233}, 2025.
+
+\bibitem{patent-us8384515}
+Biometric processing using random projection transforms.
+US Patent 8,384,515, 2013.
+
+\bibitem{scitepress-eclariss}
+ECLARISS: Security-by-Design Smart-Home Surveillance System with Edge Dynamic Biohashing.
+\textit{SciTePress}, 2026.
+
+\bibitem{cloudflare-impact}
+Zero Trust | Cloudflare Impact.
+\url{https://www.cloudflare.com/impact-portal/zero-trust/}
+
+\bibitem{patent-us20150263857}
+Dynamic seed and key generation from biometric indicia.
+US Patent App. 2015/0263857, 2015.
+
+\bibitem{arxiv-modinv}
+Deterministic Cryptographic Seed Generation via Cyclic Modular Inversion over $\bbZ/3$.
+\textit{arXiv:2507.03000}, 2025.
+
+\bibitem{cloudflare-implement}
+How to implement Zero Trust security | Step-by-step guide --- Cloudflare.
+\url{https://www.cloudflare.com/learning/access-management/how-to-implement-zero-trust/}
+
+\end{thebibliography}
+
+\end{document}

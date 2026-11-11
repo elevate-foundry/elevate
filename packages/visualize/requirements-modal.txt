@@ -1,0 +1,6 @@
+# Lightweight deps for Railway + Modal deployment (no torch/transformers)
+fastapi>=0.100
+uvicorn[standard]>=0.20
+numpy>=1.24
+pydantic>=2.0
+modal>=0.60

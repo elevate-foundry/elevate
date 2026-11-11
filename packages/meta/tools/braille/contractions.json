@@ -1,0 +1,572 @@
+{
+  "description": "Canonical UEB grade-2 contraction tables for the elevate-foundry org",
+  "version": "1.0.0",
+  "notes": "Single source of truth. Cells are Unicode braille (U+2800 block); dots are 6-dot arrays [d1..d6]. 8-dot byte encoding (BIFM-256) is uncontracted and lives in tools/braille8.mjs.",
+  "strongGroupsigns": {
+    "ch": {
+      "cell": "⠡",
+      "dots": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    "gh": {
+      "cell": "⠣",
+      "dots": [
+        1,
+        1,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    "sh": {
+      "cell": "⠩",
+      "dots": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        1
+      ]
+    },
+    "th": {
+      "cell": "⠹",
+      "dots": [
+        1,
+        0,
+        0,
+        1,
+        1,
+        1
+      ]
+    },
+    "wh": {
+      "cell": "⠱",
+      "dots": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        1
+      ]
+    },
+    "ed": {
+      "cell": "⠫",
+      "dots": [
+        1,
+        1,
+        0,
+        1,
+        0,
+        1
+      ]
+    },
+    "er": {
+      "cell": "⠻",
+      "dots": [
+        1,
+        1,
+        0,
+        1,
+        1,
+        1
+      ]
+    },
+    "ou": {
+      "cell": "⠳",
+      "dots": [
+        1,
+        1,
+        0,
+        0,
+        1,
+        1
+      ]
+    },
+    "ow": {
+      "cell": "⠪",
+      "dots": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        1
+      ]
+    },
+    "st": {
+      "cell": "⠌",
+      "dots": [
+        0,
+        0,
+        1,
+        1,
+        0,
+        0
+      ]
+    },
+    "ar": {
+      "cell": "⠜",
+      "dots": [
+        0,
+        0,
+        1,
+        1,
+        1,
+        0
+      ]
+    },
+    "ing": {
+      "cell": "⠬",
+      "dots": [
+        0,
+        0,
+        1,
+        1,
+        0,
+        1
+      ]
+    }
+  },
+  "strongWordsigns": {
+    "and": {
+      "cell": "⠯",
+      "dots": [
+        1,
+        1,
+        1,
+        1,
+        0,
+        1
+      ]
+    },
+    "for": {
+      "cell": "⠿",
+      "dots": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    "of": {
+      "cell": "⠷",
+      "dots": [
+        1,
+        1,
+        1,
+        0,
+        1,
+        1
+      ]
+    },
+    "the": {
+      "cell": "⠮",
+      "dots": [
+        0,
+        1,
+        1,
+        1,
+        0,
+        1
+      ]
+    },
+    "with": {
+      "cell": "⠾",
+      "dots": [
+        0,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    "child": {
+      "cell": "⠡",
+      "dots": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    "shall": {
+      "cell": "⠩",
+      "dots": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        1
+      ]
+    },
+    "this": {
+      "cell": "⠹",
+      "dots": [
+        1,
+        0,
+        0,
+        1,
+        1,
+        1
+      ]
+    },
+    "which": {
+      "cell": "⠱",
+      "dots": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        1
+      ]
+    },
+    "out": {
+      "cell": "⠳",
+      "dots": [
+        1,
+        1,
+        0,
+        0,
+        1,
+        1
+      ]
+    },
+    "still": {
+      "cell": "⠌",
+      "dots": [
+        0,
+        0,
+        1,
+        1,
+        0,
+        0
+      ]
+    }
+  },
+  "alphabeticWordsigns": {
+    "but": "b",
+    "can": "c",
+    "do": "d",
+    "every": "e",
+    "from": "f",
+    "go": "g",
+    "have": "h",
+    "just": "j",
+    "knowledge": "k",
+    "like": "l",
+    "more": "m",
+    "not": "n",
+    "people": "p",
+    "quite": "q",
+    "rather": "r",
+    "so": "s",
+    "that": "t",
+    "us": "u",
+    "very": "v",
+    "will": "w",
+    "it": "x",
+    "you": "y",
+    "as": "z"
+  },
+  "lowerGroupsigns": {
+    "ea": {
+      "cell": "⠂",
+      "dots": [
+        0,
+        1,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "be": {
+      "cell": "⠆",
+      "dots": [
+        0,
+        1,
+        1,
+        0,
+        0,
+        0
+      ]
+    },
+    "bb": {
+      "cell": "⠆",
+      "dots": [
+        0,
+        1,
+        1,
+        0,
+        0,
+        0
+      ]
+    },
+    "con": {
+      "cell": "⠒",
+      "dots": [
+        0,
+        1,
+        0,
+        0,
+        1,
+        0
+      ]
+    },
+    "cc": {
+      "cell": "⠒",
+      "dots": [
+        0,
+        1,
+        0,
+        0,
+        1,
+        0
+      ]
+    },
+    "dis": {
+      "cell": "⠲",
+      "dots": [
+        0,
+        1,
+        0,
+        0,
+        1,
+        1
+      ]
+    },
+    "en": {
+      "cell": "⠢",
+      "dots": [
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    "ff": {
+      "cell": "⠖",
+      "dots": [
+        0,
+        1,
+        1,
+        0,
+        1,
+        0
+      ]
+    },
+    "gg": {
+      "cell": "⠶",
+      "dots": [
+        0,
+        1,
+        1,
+        0,
+        1,
+        1
+      ]
+    },
+    "in": {
+      "cell": "⠔",
+      "dots": [
+        0,
+        0,
+        1,
+        0,
+        1,
+        0
+      ]
+    }
+  },
+  "lowerWordsigns": {
+    "be": {
+      "cell": "⠆",
+      "dots": [
+        0,
+        1,
+        1,
+        0,
+        0,
+        0
+      ]
+    },
+    "enough": {
+      "cell": "⠢",
+      "dots": [
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    "were": {
+      "cell": "⠶",
+      "dots": [
+        0,
+        1,
+        1,
+        0,
+        1,
+        1
+      ]
+    },
+    "his": {
+      "cell": "⠦",
+      "dots": [
+        0,
+        1,
+        1,
+        0,
+        0,
+        1
+      ]
+    },
+    "in": {
+      "cell": "⠔",
+      "dots": [
+        0,
+        0,
+        1,
+        0,
+        1,
+        0
+      ]
+    },
+    "was": {
+      "cell": "⠴",
+      "dots": [
+        0,
+        0,
+        1,
+        0,
+        1,
+        1
+      ]
+    }
+  },
+  "shortforms": [
+    "about",
+    "above",
+    "according",
+    "across",
+    "after",
+    "afternoon",
+    "afterward",
+    "again",
+    "against",
+    "almost",
+    "already",
+    "also",
+    "although",
+    "altogether",
+    "always",
+    "because",
+    "before",
+    "behind",
+    "below",
+    "beneath",
+    "beside",
+    "between",
+    "beyond",
+    "blind",
+    "braille",
+    "children",
+    "conceive",
+    "could",
+    "deceive",
+    "declare",
+    "either",
+    "first",
+    "friend",
+    "good",
+    "great",
+    "herself",
+    "him",
+    "himself",
+    "immediate",
+    "its",
+    "itself",
+    "letter",
+    "little",
+    "much",
+    "must",
+    "myself",
+    "necessary",
+    "neither",
+    "oneself",
+    "ourselves",
+    "paid",
+    "perhaps",
+    "quick",
+    "receive",
+    "rejoice",
+    "said",
+    "should",
+    "such",
+    "themselves",
+    "thyself",
+    "today",
+    "together",
+    "tomorrow",
+    "tonight",
+    "would",
+    "your",
+    "yourself",
+    "yourselves"
+  ],
+  "indicators": {
+    "capital": {
+      "cell": "⠠",
+      "dots": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    "number": {
+      "cell": "⠼",
+      "dots": [
+        0,
+        0,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    "grade1": {
+      "cell": "⠰",
+      "dots": [
+        0,
+        0,
+        0,
+        0,
+        1,
+        1
+      ]
+    }
+  }
+}

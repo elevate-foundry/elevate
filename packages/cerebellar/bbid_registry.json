@@ -1,0 +1,29 @@
+{
+  "hi": {
+    "bbid": "⠓⠊",
+    "convergence": 0.5,
+    "providers": {
+      "Mammouth": "⠓⠊",
+      "OpenRouter": "⠓⠊"
+    },
+    "timestamp": "2026-05-27T02:31:57.165229+00:00"
+  },
+  "Ryan": {
+    "bbid": "⠗⠽⠁⠝",
+    "convergence": 0.3125,
+    "providers": {
+      "Mammouth": "⠗⠽⠁⠝",
+      "OpenRouter": "⠔⠕⠁⠝"
+    },
+    "timestamp": "2026-05-27T02:33:40.327202+00:00"
+  },
+  "deedee olsen": {
+    "bbid": "⠙⠑⠑⠙⠑⠑⠁⠕⠇⠎",
+    "convergence": 0.0,
+    "providers": {
+      "Mammouth": "⠙⠑⠑⠙⠁⠑⠀⠕⠂⠌",
+      "OpenRouter": "⠙⠑⠑⠙⠑⠑⠁⠕⠇⠎⠑"
+    },
+    "timestamp": "2026-05-27T03:00:12.404572+00:00"
+  }
+}

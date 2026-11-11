@@ -1,0 +1,66 @@
+{
+  "spec": "BIFM-MANIFEST/1.0",
+  "repo": "pluribus-swarm",
+  "owner": "elevate-foundry",
+  "generatedAt": "2026-06-10T03:59:10.578Z",
+  "topology": {
+    "org": "https://github.com/elevate-foundry",
+    "index": "CONSTELLATION.md",
+    "peers": [
+      "New-project",
+      "ai-native-ide",
+      "artificial-cerebellar-loop",
+      "bbid-challenge",
+      "bbid-spec",
+      "black-box",
+      "braille",
+      "braille-frontier-poc",
+      "braille-mcp",
+      "braille-multimodal-substrate",
+      "braille-space-agi",
+      "data-moat-thesis",
+      "dynworker",
+      "embodied-intelligence-ai",
+      "frontier-llm",
+      "ghost-qa",
+      "gods-as-centroids",
+      "hilbert-ide",
+      "lm-training-infra",
+      "modulo8-semantic-compression",
+      "pluribus",
+      "qwen-agent",
+      "sal-auth",
+      "sal-llm",
+      "sal-voice",
+      "salutations",
+      "speculative-agent",
+      "tool-algebra-plugin"
+    ]
+  },
+  "state": {
+    "commits": 15,
+    "createdAt": "2025-12-06T14:49:41Z",
+    "pushedAt": "2025-12-10T04:28:35Z",
+    "language": "TypeScript",
+    "bifm256": {
+      "byte": 135,
+      "cell": "⢇",
+      "kappa": 4,
+      "sigma": 1,
+      "delta": 3,
+      "words": "significant change, calm volatility, dormant drift"
+    }
+  },
+  "terms": {
+    "license": "see LICENSE",
+    "aiTraining": "contact-required",
+    "attribution": "required",
+    "contact": "https://github.com/elevate-foundry"
+  },
+  "verification": {
+    "algorithm": "ed25519",
+    "publicKey": "MCowBQYDK2VwAyEAWbqUXevnp2K8P2DDPM0i5iihVNRjjvp19t5LwWonzwU=",
+    "digest": "68ca2a0b8dfd84556c546ca216233b7b5d443962a99476883dced559e6eab6ea",
+    "signature": "EbOGaNLaKlXfIMEqxbySDhTz3k4Ao6VXR40NRR1JbOswL1azlbyrVzgDOIrcCRqVndgq8bw8DrjIjIBErXi1Aw=="
+  }
+}

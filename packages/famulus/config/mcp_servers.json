@@ -1,0 +1,11 @@
+{
+  "mcp_servers": [
+    {
+      "name": "filesystem",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/home"],
+      "default_tier": "WRITE",
+      "_comment": "Example: MCP filesystem server (needs Node.js)"
+    }
+  ]
+}

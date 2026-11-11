@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BBID Self-Hosted Prototype</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .tab:hover {
+            color: #667eea;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #eee;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 13px;
+            display: none;
+        }
+
+        .result.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .result.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .result.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .info-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: #666;
+            border-left: 4px solid #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>BBID Self-Hosted Prototype</h1>
+        <p class="subtitle">Cross-platform biometric/behavioral identity protocol</p>
+
+        <div class="info-box">
+            <strong>Prototype Note:</strong> This is a simplified implementation for testing. 
+            In production, use Neo4j for the graph database and secure key management for M_sys.
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('enroll')">Enroll</div>
+            <div class="tab" onclick="switchTab('auth')">Authenticate</div>
+            <div class="tab" onclick="switchTab('verify')">Verify (Mismatch)</div>
+            <div class="tab" onclick="switchTab('re-enroll')">Re-Enroll</div>
+        </div>
+
+        <!-- Enroll Form -->
+        <div id="enroll-form">
+            <div class="form-group">
+                <label for="enroll-user-id">User ID</label>
+                <input type="text" id="enroll-user-id" placeholder="Enter your username">
+            </div>
+            <div class="info-box" style="font-size: 12px; margin-bottom: 15px;">
+                Hardware and behavioral features will be collected automatically.
+            </div>
+            <button onclick="enroll()" id="enroll-btn">Enroll User</button>
+            <div class="result" id="enroll-result"></div>
+        </div>
+
+        <!-- Auth Form -->
+        <div id="auth-form" class="hidden">
+            <div class="form-group">
+                <label for="auth-user-id">User ID</label>
+                <input type="text" id="auth-user-id" placeholder="Enter your username">
+            </div>
+            <button onclick="getSeed()" id="auth-btn">Get Derived Seed</button>
+            <div class="result" id="auth-result"></div>
+        </div>
+
+        <!-- Verify Form (Mismatch Detection) -->
+        <div id="verify-form" class="hidden">
+            <div class="form-group">
+                <label for="verify-user-id">User ID</label>
+                <input type="text" id="verify-user-id" placeholder="Enter your username">
+            </div>
+            <div class="info-box" style="font-size: 12px; margin-bottom: 15px;">
+                Current hardware and behavioral features will be collected automatically.
+            </div>
+            <button onclick="verifyWithMismatch()" id="verify-btn">Verify with Mismatch Detection</button>
+            <div class="result" id="verify-result"></div>
+        </div>
+
+        <!-- Re-Enroll Form -->
+        <div id="re-enroll-form" class="hidden">
+            <div class="form-group">
+                <label for="re-enroll-user-id">User ID</label>
+                <input type="text" id="re-enroll-user-id" placeholder="Enter your username">
+            </div>
+            <button onclick="reEnroll()" id="re-enroll-btn">Increment Version (Re-Enroll)</button>
+            <div class="result" id="re-enroll-result"></div>
+        </div>
+
+        <div style="margin-top: 20px; text-align: center;">
+            <button onclick="forgetMe()" style="background: #6c757d; font-size: 14px; padding: 10px;">Forget Me</button>
+        </div>
+    </div>
+
+    <script>
+        // Hardware feature collection (browser fingerprinting)
+        function collectHardwareFeatures() {
+            const features = [];
+            
+            // Screen resolution
+            features.push(`screen:${window.screen.width}x${window.screen.height}`);
+            
+            // Color depth
+            features.push(`colorDepth:${window.screen.colorDepth}`);
+            
+            // User agent
+            features.push(`ua:${navigator.userAgent.substring(0, 50)}`);
+            
+            // Language
+            features.push(`lang:${navigator.language}`);
+            
+            // Platform
+            features.push(`platform:${navigator.platform}`);
+            
+            // Timezone
+            features.push(`timezone:${Intl.DateTimeFormat().resolvedOptions().timeZone}`);
+            
+            // Canvas fingerprint (simplified)
+            try {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                ctx.textBaseline = 'top';
+                ctx.font = '14px Arial';
+                ctx.fillStyle = '#f60';
+                ctx.fillRect(125, 1, 62, 20);
+                ctx.fillStyle = '#069';
+                ctx.fillText('BBID', 2, 15);
+                features.push(`canvas:${canvas.toDataURL().substring(0, 20)}`);
+            } catch (e) {
+                features.push('canvas:unavailable');
+            }
+            
+            return features.join(',');
+        }
+
+        // Behavioral feature collection
+        const behavioralData = {
+            keystrokes: [],
+            mouseMovements: [],
+            scrollEvents: [],
+            startTime: Date.now()
+        };
+
+        // Track keystrokes
+        document.addEventListener('keydown', (e) => {
+            const now = Date.now();
+            if (behavioralData.keystrokes.length > 0) {
+                const lastKeystroke = behavioralData.keystrokes[behavioralData.keystrokes.length - 1];
+                const interval = now - lastKeystroke.time;
+                behavioralData.keystrokes.push({ key: e.key, time: now, interval });
+            } else {
+                behavioralData.keystrokes.push({ key: e.key, time: now, interval: 0 });
+            }
+        });
+
+        // Track mouse movements
+        document.addEventListener('mousemove', (e) => {
+            const now = Date.now();
+            if (behavioralData.mouseMovements.length > 0) {
+                const lastMove = behavioralData.mouseMovements[behavioralData.mouseMovements.length - 1];
+                const interval = now - lastMove.time;
+                const distance = Math.sqrt(Math.pow(e.clientX - lastMove.x, 2) + Math.pow(e.clientY - lastMove.y, 2));
+                behavioralData.mouseMovements.push({ x: e.clientX, y: e.clientY, time: now, interval, distance });
+            } else {
+                behavioralData.mouseMovements.push({ x: e.clientX, y: e.clientY, time: now, interval: 0, distance: 0 });
+            }
+        });
+
+        // Track scroll events
+        document.addEventListener('scroll', (e) => {
+            const now = Date.now();
+            if (behavioralData.scrollEvents.length > 0) {
+                const lastScroll = behavioralData.scrollEvents[behavioralData.scrollEvents.length - 1];
+                const interval = now - lastScroll.time;
+                behavioralData.scrollEvents.push({ y: window.scrollY, time: now, interval });
+            } else {
+                behavioralData.scrollEvents.push({ y: window.scrollY, time: now, interval: 0 });
+            }
+        });
+
+        function collectBehavioralFeatures() {
+            const features = [];
+            
+            // Average keystroke interval
+            if (behavioralData.keystrokes.length > 1) {
+                const intervals = behavioralData.keystrokes.map(k => k.interval).filter(i => i > 0);
+                const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+                features.push(`typing:${Math.round(avgInterval)}ms`);
+            } else {
+                features.push('typing:0ms');
+            }
+            
+            // Average mouse speed
+            if (behavioralData.mouseMovements.length > 1) {
+                const speeds = behavioralData.mouseMovements.map(m => m.distance / (m.interval || 1)).filter(s => s > 0);
+                const avgSpeed = speeds.reduce((a, b) => a + b, 0) / speeds.length;
+                features.push(`mouse:${Math.round(avgSpeed)}px/ms`);
+            } else {
+                features.push('mouse:0px/ms');
+            }
+            
+            // Scroll frequency
+            features.push(`scroll:${behavioralData.scrollEvents.length}`);
+            
+            // Session duration
+            const duration = Date.now() - behavioralData.startTime;
+            features.push(`duration:${Math.round(duration / 1000)}s`);
+            
+            return features.join(',');
+        }
+
+        // Load remembered user ID from localStorage
+        function loadRememberedUser() {
+            const rememberedUser = localStorage.getItem('bbid_user_id');
+            if (rememberedUser) {
+                document.getElementById('enroll-user-id').value = rememberedUser;
+                document.getElementById('auth-user-id').value = rememberedUser;
+                document.getElementById('verify-user-id').value = rememberedUser;
+                document.getElementById('re-enroll-user-id').value = rememberedUser;
+            }
+        }
+
+        // Save user ID to localStorage
+        function rememberUser(userId) {
+            localStorage.setItem('bbid_user_id', userId);
+        }
+
+        // Clear remembered user ID
+        function forgetMe() {
+            localStorage.removeItem('bbid_user_id');
+            document.getElementById('enroll-user-id').value = '';
+            document.getElementById('auth-user-id').value = '';
+            document.getElementById('verify-user-id').value = '';
+            document.getElementById('re-enroll-user-id').value = '';
+            showResult('enroll-result', 'User forgotten. All user ID fields cleared.', 'info');
+        }
+
+        // Load remembered user on page load
+        window.addEventListener('load', loadRememberedUser);
+
+        function switchTab(tab) {
+            // Hide all forms
+            document.querySelectorAll('[id$="-form"]').forEach(form => {
+                form.classList.add('hidden');
+            });
+
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab').forEach(t => {
+                t.classList.remove('active');
+            });
+
+            // Show selected form
+            document.getElementById(tab + '-form').classList.remove('hidden');
+
+            // Activate tab
+            event.target.classList.add('active');
+        }
+
+        function showResult(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = 'result ' + type;
+            element.style.display = 'block';
+        }
+
+        function setLoading(btnId, loading) {
+            const btn = document.getElementById(btnId);
+            if (loading) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="loading"></span>Processing...';
+            } else {
+                btn.disabled = false;
+                btn.innerHTML = btnId.replace('-btn', '').replace('-', ' ').replace(/([A-Z])/g, ' $1').trim();
+                btn.innerHTML = btn.innerHTML.charAt(0).toUpperCase() + btn.innerHTML.slice(1);
+            }
+        }
+
+        async function enroll() {
+            const userId = document.getElementById('enroll-user-id').value;
+
+            if (!userId) {
+                showResult('enroll-result', 'Please enter a user ID', 'error');
+                return;
+            }
+
+            setLoading('enroll-btn', true);
+
+            // Auto-collect features
+            const hwFeatures = collectHardwareFeatures();
+            const behavioralFeatures = collectBehavioralFeatures();
+
+            try {
+                const response = await fetch('/api/enroll', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        hw_features: hwFeatures,
+                        behavioral_features: behavioralFeatures
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    rememberUser(userId);
+                    showResult('enroll-result',
+                        `User enrolled successfully!\nUser ID: ${data.user_id}\nVersion: ${data.version}`,
+                        'success');
+                } else {
+                    showResult('enroll-result', `Error: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showResult('enroll-result', `Network error: ${error.message}`, 'error');
+            }
+
+            setLoading('enroll-btn', false);
+        }
+
+        async function getSeed() {
+            const userId = document.getElementById('auth-user-id').value;
+
+            if (!userId) {
+                showResult('auth-result', 'Please enter a user ID', 'error');
+                return;
+            }
+
+            setLoading('auth-btn', true);
+
+            try {
+                const response = await fetch('/api/auth/seed', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId })
+                });
+
+                const data = await response.json();
+
+                if (data.seed) {
+                    showResult('auth-result', 
+                        `Seed derived successfully!\nUser ID: ${userId}\nVersion: ${data.version}\nSeed: ${data.seed.substring(0, 32)}...`, 
+                        'success');
+                } else {
+                    showResult('auth-result', `Error: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showResult('auth-result', `Network error: ${error.message}`, 'error');
+            }
+
+            setLoading('auth-btn', false);
+        }
+
+        async function verifyWithMismatch() {
+            const userId = document.getElementById('verify-user-id').value;
+
+            if (!userId) {
+                showResult('verify-result', 'Please enter a user ID', 'error');
+                return;
+            }
+
+            setLoading('verify-btn', true);
+
+            // Auto-collect features
+            const hwFeatures = collectHardwareFeatures();
+            const behavioralFeatures = collectBehavioralFeatures();
+
+            try {
+                const response = await fetch('/api/auth/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        hw_features: hwFeatures,
+                        behavioral_features: behavioralFeatures
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    showResult('verify-result', `Error: ${data.error}`, 'error');
+                } else {
+                    let message = '';
+                    if (data.authenticated) {
+                        message = `✓ AUTHENTICATED\n\n`;
+                        message += `Hardware distance: ${data.hw_distance} (threshold: ${data.hw_threshold})\n`;
+                        message += `Behavioral distance: ${data.behavioral_distance} (threshold: ${data.behavioral_threshold})\n`;
+                        message += `Confidence: ${data.confidence}`;
+                        showResult('verify-result', message, 'success');
+                    } else {
+                        message = `✗ NOT AUTHENTICATED\n\n`;
+                        message += `Mismatch type: ${data.mismatch_type}\n\n`;
+                        message += `Hardware distance: ${data.hw_distance} (threshold: ${data.hw_threshold}) - ${data.hw_match ? '✓' : '✗'}\n`;
+                        message += `Behavioral distance: ${data.behavioral_distance} (threshold: ${data.behavioral_threshold}) - ${data.behavioral_match ? '✓' : '✗'}\n`;
+                        message += `Confidence: ${data.confidence}`;
+                        showResult('verify-result', message, 'error');
+                    }
+                }
+            } catch (error) {
+                showResult('verify-result', `Network error: ${error.message}`, 'error');
+            }
+
+            setLoading('verify-btn', false);
+        }
+
+        async function reEnroll() {
+            const userId = document.getElementById('re-enroll-user-id').value;
+
+            if (!userId) {
+                showResult('re-enroll-result', 'Please enter a user ID', 'error');
+                return;
+            }
+
+            setLoading('re-enroll-btn', true);
+
+            try {
+                const response = await fetch('/api/re-enroll', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showResult('re-enroll-result', data.message, 'success');
+                } else {
+                    showResult('re-enroll-result', `Error: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showResult('re-enroll-result', `Network error: ${error.message}`, 'error');
+            }
+
+            setLoading('re-enroll-btn', false);
+        }
+    </script>
+</body>
+</html>

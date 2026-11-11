@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "elevate-bbid"
+version = "0.1.0"
+description = "Braille Binary Identity for the Elevate ecosystem"
+requires-python = ">=3.9"
+license = "MIT"
+dependencies = ["elevate-braille>=0.1.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[tool.setuptools.packages.find]
+include = ["elevate_bbid*"]

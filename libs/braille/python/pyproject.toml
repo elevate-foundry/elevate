@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "elevate-braille"
+version = "0.1.0"
+description = "Canonical braille byte codec for the Elevate Foundry ecosystem"
+requires-python = ">=3.9"
+license = "MIT"
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[tool.setuptools.packages.find]
+include = ["braille_codec*"]

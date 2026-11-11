@@ -1,0 +1,1388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Neuron Firing Visualizer</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        :root {
+            --bg: #0a0a0f;
+            --bg2: #12121a;
+            --bg3: #1a1a25;
+            --border: #2a2a3a;
+            --text: #e0e0e8;
+            --text-dim: #8888a0;
+            --accent: #6366f1;
+            --accent2: #8b5cf6;
+            --fire-cold: #1e1b4b;
+            --fire-warm: #f59e0b;
+            --fire-hot: #ef4444;
+            --green: #22c55e;
+            --red: #ef4444;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+            background: var(--bg);
+            color: var(--text);
+            overflow-x: hidden;
+        }
+
+        .header {
+            background: var(--bg2);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header h1 {
+            font-size: 18px;
+            font-weight: 600;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .model-badge {
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 4px 12px;
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+
+        .main {
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            height: calc(100vh - 57px);
+        }
+
+        .sidebar {
+            background: var(--bg2);
+            border-right: 1px solid var(--border);
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .section-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-dim);
+            margin-bottom: 8px;
+        }
+
+        .prompt-area, .input-field {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            padding: 12px;
+            font-family: inherit;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .prompt-area { resize: vertical; min-height: 80px; }
+        .prompt-area:focus, .input-field:focus { border-color: var(--accent); }
+
+        .btn {
+            border: none;
+            border-radius: 8px;
+            color: white;
+            padding: 10px 20px;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+            width: 100%;
+        }
+
+        .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); }
+        .btn-danger { background: linear-gradient(135deg, var(--red), #dc2626); }
+        .btn:hover { opacity: 0.9; }
+        .btn:active { transform: scale(0.98); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .controls label {
+            font-size: 12px;
+            color: var(--text-dim);
+            white-space: nowrap;
+        }
+
+        .controls input[type="range"] {
+            flex: 1;
+            accent-color: var(--accent);
+        }
+
+        .controls select, select {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 6px 8px;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 12px;
+        }
+
+        .token-stream {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            min-height: 60px;
+            max-height: 150px;
+            overflow-y: auto;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .token-stream .token {
+            display: inline;
+            padding: 1px 0;
+            cursor: pointer;
+            transition: background 0.15s;
+            border-radius: 2px;
+        }
+
+        .token-stream .token:hover { background: rgba(99, 102, 241, 0.3); }
+        .token-stream .token.active { background: rgba(99, 102, 241, 0.4); outline: 1px solid var(--accent); }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .stat-card {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .stat-card .stat-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-dim);
+        }
+
+        .stat-card .stat-value {
+            font-size: 18px;
+            font-weight: 700;
+            margin-top: 2px;
+            background: linear-gradient(135deg, var(--accent), var(--fire-warm));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .viz-container {
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .viz-tabs {
+            display: flex;
+            gap: 4px;
+            background: var(--bg2);
+            padding: 4px;
+            border-radius: 10px;
+            width: fit-content;
+        }
+
+        .viz-tab {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            color: var(--text-dim);
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        .viz-tab.active { background: var(--accent); color: white; }
+
+        .viz-panel {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            flex: 1;
+            min-height: 0;
+            overflow: auto;
+        }
+
+        .viz-panel.hidden { display: none; }
+
+        .layer-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 2px;
+        }
+
+        .layer-label {
+            font-size: 10px;
+            color: var(--text-dim);
+            width: 32px;
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        .heatmap-row {
+            display: flex;
+            gap: 0;
+            flex: 1;
+            height: 16px;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .tooltip {
+            position: fixed;
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 11px;
+            pointer-events: none;
+            z-index: 1000;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            max-width: 300px;
+        }
+
+        .tooltip .tt-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: var(--accent);
+        }
+
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            display: inline-block;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .legend {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            color: var(--text-dim);
+            margin-bottom: 12px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .status-dot.connected { background: #22c55e; }
+        .status-dot.disconnected { background: #ef4444; }
+        .status-dot.loading { background: var(--fire-warm); animation: pulse 1s ease-in-out infinite; }
+
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            gap: 12px;
+            color: var(--text-dim);
+            font-size: 14px;
+        }
+
+        .empty-state .icon { font-size: 48px; opacity: 0.3; }
+
+        /* Ablation-specific styles */
+        .ablation-section {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+        }
+
+        .side-by-side {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .comparison-panel {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .comparison-panel h3 {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .comparison-panel h3 .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .comparison-panel .output-text {
+            font-size: 13px;
+            line-height: 1.6;
+            min-height: 60px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .ablation-log {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 12px;
+            max-height: 120px;
+            overflow-y: auto;
+        }
+
+        .ablation-log .log-entry {
+            padding: 2px 0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .ablation-log .log-entry .log-icon {
+            font-size: 10px;
+        }
+
+        .neuron-map {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2px;
+            margin-top: 8px;
+        }
+
+        .neuron-map .layer-chip {
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 10px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .neuron-map .layer-chip:hover { border-color: var(--accent); }
+        .neuron-map .layer-chip.hot { border-color: var(--red); background: rgba(239, 68, 68, 0.15); }
+
+        .diff-highlight { background: rgba(239, 68, 68, 0.2); border-radius: 2px; }
+
+        .heatmap-pair {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2px;
+            margin-bottom: 2px;
+        }
+
+        .heatmap-pair-label {
+            font-size: 9px;
+            color: var(--text-dim);
+            text-align: center;
+            margin-bottom: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Neuron Firing Visualizer</h1>
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <span class="status-dot disconnected" id="status-dot"></span>
+            <span class="model-badge" id="model-badge">Connecting...</span>
+        </div>
+    </div>
+
+    <div class="main">
+        <div class="sidebar">
+            <div>
+                <div class="section-title">Prompt</div>
+                <textarea class="prompt-area" id="prompt-input" placeholder="Enter a prompt to see neurons fire...">A dog is a wonderful pet because</textarea>
+            </div>
+
+            <div class="controls">
+                <label>Tokens:</label>
+                <input type="range" id="max-tokens" min="1" max="64" value="20">
+                <span id="max-tokens-val">20</span>
+            </div>
+
+            <button class="btn btn-primary" id="generate-btn" disabled>Generate & Visualize</button>
+
+            <div>
+                <div class="section-title">Ablation</div>
+                <div class="ablation-section">
+                    <div class="controls" style="margin-bottom: 8px;">
+                        <label>Erase concept:</label>
+                        <input class="input-field" id="ablate-concept" value="dog" placeholder="e.g. dog, math, love" style="flex:1;">
+                    </div>
+                    <div class="controls" style="margin-bottom: 8px;">
+                        <label>Strength (alpha):</label>
+                        <input type="range" id="ablate-alpha" min="0" max="2.0" step="0.1" value="1.0" style="flex:1;">
+                        <span id="ablate-alpha-val">1.0</span>
+                    </div>
+                    <button class="btn btn-danger" id="ablate-btn" disabled>Ablate & Compare</button>
+                </div>
+            </div>
+
+            <div>
+                <div class="section-title">Generated Output</div>
+                <div class="token-stream" id="token-stream">
+                    <span style="color: var(--text-dim); font-style: italic;">Output will appear here...</span>
+                </div>
+            </div>
+
+            <div>
+                <div class="section-title">Statistics</div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Layers</div>
+                        <div class="stat-value" id="stat-layers">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Hidden Size</div>
+                        <div class="stat-value" id="stat-hidden">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Avg Firing</div>
+                        <div class="stat-value" id="stat-firing">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Tokens</div>
+                        <div class="stat-value" id="stat-tokens">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="section-title">View Controls</div>
+                <div class="controls">
+                    <label>Token:</label>
+                    <select id="token-select">
+                        <option value="-1">All tokens</option>
+                    </select>
+                </div>
+                <div class="controls" style="margin-top: 8px;">
+                    <label>Color scale:</label>
+                    <select id="color-scale">
+                        <option value="fire">Fire</option>
+                        <option value="viridis">Viridis</option>
+                        <option value="plasma">Plasma</option>
+                        <option value="cool">Cool</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="viz-container">
+            <div class="viz-tabs">
+                <button class="viz-tab active" data-tab="heatmap">Layer Heatmap</button>
+                <button class="viz-tab" data-tab="firing">Firing Rate</button>
+                <button class="viz-tab" data-tab="network">Network View</button>
+                <button class="viz-tab" data-tab="ablation">Ablation</button>
+            </div>
+
+            <div class="viz-panel" id="panel-heatmap">
+                <div class="empty-state" id="heatmap-empty">
+                    <div class="icon">&#9881;</div>
+                    <div>Enter a prompt and click Generate to visualize neuron activations</div>
+                </div>
+                <div id="heatmap-content" style="display: none;">
+                    <div class="legend" id="heatmap-legend"></div>
+                    <div id="heatmap-layers"></div>
+                </div>
+            </div>
+
+            <div class="viz-panel hidden" id="panel-firing">
+                <div class="empty-state" id="firing-empty">
+                    <div class="icon">&#9881;</div>
+                    <div>Firing rate shows what fraction of neurons activate per layer</div>
+                </div>
+                <div id="firing-chart" style="display:none;"></div>
+            </div>
+
+            <div class="viz-panel hidden" id="panel-network">
+                <div class="empty-state" id="network-empty">
+                    <div class="icon">&#9881;</div>
+                    <div>Network view shows the model architecture with firing intensity</div>
+                </div>
+                <svg id="network-svg" style="display:none;"></svg>
+            </div>
+
+            <div class="viz-panel hidden" id="panel-ablation">
+                <div class="empty-state" id="ablation-empty">
+                    <div class="icon">&#9881;</div>
+                    <div>Enter a concept and click "Ablate & Compare" to erase it via directional ablation</div>
+                    <div style="font-size:12px;margin-top:4px;">Projects out the concept's direction in residual space at each layer (Heretic-style abliteration)</div>
+                </div>
+                <div id="ablation-content" style="display:none;">
+                    <div class="ablation-log" id="ablation-log"></div>
+                    <div style="margin-top: 16px;">
+                        <div class="section-title">Concept Direction (per layer)</div>
+                        <div class="neuron-map" id="neuron-map"></div>
+                    </div>
+                    <div class="side-by-side" style="margin-top: 16px;">
+                        <div class="comparison-panel">
+                            <h3><span class="dot" style="background:var(--green);"></span> Normal Output</h3>
+                            <div class="output-text" id="normal-output">...</div>
+                        </div>
+                        <div class="comparison-panel">
+                            <h3><span class="dot" style="background:var(--red);"></span> Ablated Output</h3>
+                            <div class="output-text" id="ablated-output">...</div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 16px;">
+                        <div class="section-title">Activation Comparison (per layer)</div>
+                        <div class="side-by-side" style="margin-bottom:8px;">
+                            <div class="heatmap-pair-label">Normal</div>
+                            <div class="heatmap-pair-label">Ablated</div>
+                        </div>
+                        <div id="ablation-heatmaps"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tooltip" id="tooltip" style="display:none;"></div>
+
+    <script>
+    // ============================================================
+    // State
+    // ============================================================
+    const state = {
+        ws: null,
+        connected: false,
+        modelInfo: null,
+        prefillData: null,
+        tokenSteps: [],
+        allTokens: [],
+        selectedToken: -1,
+        colorScale: 'fire',
+        generating: false,
+        ablating: false,
+        ablation: {
+            normalText: '',
+            ablatedText: '',
+            normalTokens: [],
+            ablatedTokens: [],
+            normalPrefill: null,
+            ablatedPrefill: null,
+            layerStats: {},
+            concept: '',
+            method: 'directional',
+            alpha: 1.0,
+        },
+    };
+
+    // ============================================================
+    // Color scales
+    // ============================================================
+    const colorScales = {
+        fire: (t) => {
+            if (t < 0) t = 0;
+            if (t > 1) t = 1;
+            const r = Math.min(255, Math.floor(t < 0.4 ? t * 2.5 * 80 : 80 + (t - 0.4) * 291.67));
+            const g = Math.min(255, Math.floor(t < 0.6 ? t * 1.2 * 40 : 40 + (t - 0.6) * 537.5));
+            const b = Math.min(255, Math.floor(t < 0.3 ? 30 + t * 200 : 90 * (1 - (t - 0.3) * 1.43)));
+            return `rgb(${r},${g},${b})`;
+        },
+        viridis: (t) => d3.interpolateViridis(t),
+        plasma: (t) => d3.interpolatePlasma(t),
+        cool: (t) => d3.interpolateCool(t),
+    };
+
+    function getColor(value, min, max) {
+        const scale = colorScales[state.colorScale] || colorScales.fire;
+        const norm = max === min ? 0.5 : (value - min) / (max - min);
+        return scale(Math.max(0, Math.min(1, norm)));
+    }
+
+    // ============================================================
+    // WebSocket
+    // ============================================================
+    function connect() {
+        const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        state.ws = new WebSocket(`${protocol}//${location.host}/ws`);
+
+        state.ws.onopen = () => {
+            state.connected = true;
+            updateStatus('connected');
+            document.getElementById('generate-btn').disabled = false;
+            document.getElementById('ablate-btn').disabled = false;
+            state.ws.send(JSON.stringify({ type: 'model_info' }));
+        };
+
+        state.ws.onmessage = (e) => handleMessage(JSON.parse(e.data));
+
+        state.ws.onclose = () => {
+            state.connected = false;
+            updateStatus('disconnected');
+            document.getElementById('generate-btn').disabled = true;
+            document.getElementById('ablate-btn').disabled = true;
+            setTimeout(connect, 2000);
+        };
+
+        state.ws.onerror = () => state.ws.close();
+    }
+
+    function handleMessage(msg) {
+        switch (msg.type) {
+            case 'model_info':
+                state.modelInfo = msg.data;
+                document.getElementById('model-badge').textContent =
+                    `${msg.data.name} | ${msg.data.total_params} | ${msg.data.device.toUpperCase()}`;
+                document.getElementById('stat-layers').textContent = msg.data.num_layers;
+                document.getElementById('stat-hidden').textContent = msg.data.hidden_size;
+                break;
+
+            case 'prefill':
+                state.prefillData = msg.data;
+                state.allTokens = msg.data.tokens.slice();
+                state.tokenSteps = [];
+                updateTokenStream();
+                updateStats();
+                renderCurrentView();
+                break;
+
+            case 'token':
+                state.tokenSteps.push(msg.data);
+                state.allTokens = msg.data.all_tokens.slice();
+                updateTokenStream();
+                updateStats();
+                renderCurrentView();
+                break;
+
+            case 'done':
+            case 'complete':
+                state.generating = false;
+                document.getElementById('generate-btn').disabled = false;
+                document.getElementById('generate-btn').textContent = 'Generate & Visualize';
+                document.getElementById('ablate-btn').disabled = false;
+                updateStatus('connected');
+                updateTokenSelect();
+                break;
+
+            case 'error':
+                alert('Error: ' + msg.message);
+                state.generating = false;
+                state.ablating = false;
+                document.getElementById('generate-btn').disabled = false;
+                document.getElementById('generate-btn').textContent = 'Generate & Visualize';
+                document.getElementById('ablate-btn').disabled = false;
+                document.getElementById('ablate-btn').textContent = 'Ablate & Compare';
+                updateStatus('connected');
+                break;
+
+            // Ablation messages
+            case 'ablation_status':
+                addAblationLog(msg.message, msg.status);
+                break;
+
+            case 'ablation_normal':
+                state.ablation.normalText = msg.text;
+                state.ablation.normalTokens = msg.tokens;
+                state.ablation.normalPrefill = msg.prefill;
+                document.getElementById('normal-output').textContent = msg.text;
+                break;
+
+            case 'ablation_ablated':
+                state.ablation.ablatedText = msg.text;
+                state.ablation.ablatedTokens = msg.tokens;
+                state.ablation.ablatedPrefill = msg.prefill;
+                document.getElementById('ablated-output').textContent = msg.text;
+                break;
+
+            case 'ablation_complete':
+                state.ablating = false;
+                state.ablation.concept = msg.concept;
+                state.ablation.method = msg.method || 'directional';
+                state.ablation.alpha = msg.alpha || 1.0;
+                document.getElementById('ablate-btn').disabled = false;
+                document.getElementById('ablate-btn').textContent = 'Ablate & Compare';
+                document.getElementById('generate-btn').disabled = false;
+                updateStatus('connected');
+                addAblationLog(
+                    `Done! Directional ablation on ${msg.layers_affected} layers (alpha=${msg.alpha}, cos_sim=${msg.mean_cosine_sim}, diff_norm=${msg.mean_diff_norm})`,
+                    'complete'
+                );
+                renderAblationHeatmaps();
+                // Switch to ablation tab
+                document.querySelectorAll('.viz-tab').forEach(t => t.classList.remove('active'));
+                document.querySelector('[data-tab="ablation"]').classList.add('active');
+                document.querySelectorAll('.viz-panel').forEach(p => p.classList.add('hidden'));
+                document.getElementById('panel-ablation').classList.remove('hidden');
+                break;
+        }
+
+        // Handle layer stats from ablation_status
+        if (msg.type === 'ablation_status' && msg.layer_stats) {
+            state.ablation.layerStats = msg.layer_stats;
+            renderNeuronMap();
+        }
+    }
+
+    // ============================================================
+    // Ablation UI
+    // ============================================================
+    function addAblationLog(message, status) {
+        const log = document.getElementById('ablation-log');
+        const icons = {
+            probing: '<span class="spinner" style="width:10px;height:10px;border-width:1.5px;"></span>',
+            found: '<span style="color:var(--fire-warm);">&#9733;</span>',
+            generating_normal: '<span class="spinner" style="width:10px;height:10px;border-width:1.5px;"></span>',
+            generating_ablated: '<span class="spinner" style="width:10px;height:10px;border-width:1.5px;"></span>',
+            complete: '<span style="color:var(--green);">&#10003;</span>',
+        };
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        entry.innerHTML = `<span class="log-icon">${icons[status] || '&#8226;'}</span> ${message}`;
+        log.appendChild(entry);
+        log.scrollTop = log.scrollHeight;
+    }
+
+    function renderNeuronMap() {
+        const map = document.getElementById('neuron-map');
+        map.innerHTML = '';
+        const stats = state.ablation.layerStats;
+        if (!stats || !Object.keys(stats).length) return;
+
+        const norms = Object.values(stats).map(s => s.diff_norm);
+        const maxNorm = Math.max(...norms, 0.001);
+
+        for (const [layerIdx, data] of Object.entries(stats).sort((a, b) => +a[0] - +b[0])) {
+            const chip = document.createElement('div');
+            chip.className = 'layer-chip';
+            // Highlight layers with strongest concept direction
+            const intensity = data.diff_norm / maxNorm;
+            if (intensity > 0.5) chip.classList.add('hot');
+            chip.textContent = `L${layerIdx}`;
+            // Color the chip border by intensity
+            if (intensity > 0.3) {
+                chip.style.borderColor = getColor(intensity, 0, 1);
+                chip.style.background = `rgba(239, 68, 68, ${intensity * 0.15})`;
+            }
+            chip.addEventListener('mouseenter', (e) => {
+                showTooltip(e, `
+                    <div class="tt-title">Layer ${layerIdx}</div>
+                    <div>Direction norm: ${data.diff_norm.toFixed(4)}</div>
+                    <div>Cosine sim (concept vs baseline): ${data.cosine_sim.toFixed(4)}</div>
+                    <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">
+                        Concept mean norm: ${data.concept_norm.toFixed(2)} |
+                        Baseline mean norm: ${data.baseline_norm.toFixed(2)}
+                    </div>
+                `);
+            });
+            chip.addEventListener('mouseleave', hideTooltip);
+            map.appendChild(chip);
+        }
+    }
+
+    function renderAblationHeatmaps() {
+        const container = document.getElementById('ablation-heatmaps');
+        container.innerHTML = '';
+        const normalPrefill = state.ablation.normalPrefill;
+        const ablatedPrefill = state.ablation.ablatedPrefill;
+        if (!normalPrefill || !ablatedPrefill) return;
+
+        const numLayers = normalPrefill.num_layers;
+        for (let layerIdx = 0; layerIdx < numLayers; layerIdx++) {
+            const normalLayer = normalPrefill.layers[layerIdx];
+            const ablatedLayer = ablatedPrefill.layers[layerIdx];
+
+            const row = document.createElement('div');
+            row.className = 'layer-row';
+
+            const label = document.createElement('div');
+            label.className = 'layer-label';
+            label.textContent = `L${layerIdx}`;
+            // Highlight layers by direction strength
+            const ls = state.ablation.layerStats[String(layerIdx)];
+            if (ls && ls.has_direction) {
+                const allNorms = Object.values(state.ablation.layerStats).map(s => s.diff_norm);
+                const maxN = Math.max(...allNorms, 0.001);
+                const intensity = ls.diff_norm / maxN;
+                if (intensity > 0.3) {
+                    label.style.color = 'var(--red)';
+                    label.style.fontWeight = '700';
+                }
+            }
+            row.appendChild(label);
+
+            const pair = document.createElement('div');
+            pair.className = 'heatmap-pair';
+            pair.style.flex = '1';
+
+            // Normal heatmap
+            pair.appendChild(makeHeatmapCanvas(normalLayer, layerIdx, 'normal'));
+            // Ablated heatmap
+            pair.appendChild(makeHeatmapCanvas(ablatedLayer, layerIdx, 'ablated'));
+
+            row.appendChild(pair);
+            container.appendChild(row);
+        }
+    }
+
+    function makeHeatmapCanvas(layerData, layerIdx, label) {
+        let heatmap = null;
+        if (layerData.gate && layerData.gate.heatmap) heatmap = layerData.gate.heatmap;
+        else if (layerData.mlp && layerData.mlp.heatmap) heatmap = layerData.mlp.heatmap;
+        else if (layerData.residual && layerData.residual.heatmap) heatmap = layerData.residual.heatmap;
+
+        const canvas = document.createElement('canvas');
+        canvas.style.width = '100%';
+        canvas.style.height = '14px';
+        canvas.style.borderRadius = '2px';
+        canvas.style.imageRendering = 'pixelated';
+
+        if (!heatmap || !heatmap.length) {
+            canvas.width = 1;
+            canvas.height = 1;
+            return canvas;
+        }
+
+        // Mean across tokens
+        const nNeurons = heatmap[0].length;
+        const values = new Array(nNeurons).fill(0);
+        heatmap.forEach(row => row.forEach((v, i) => { values[i] += v; }));
+        for (let i = 0; i < nNeurons; i++) values[i] /= heatmap.length;
+
+        canvas.width = nNeurons;
+        canvas.height = 1;
+        const ctx = canvas.getContext('2d');
+        const absValues = values.map(Math.abs);
+        const vMin = Math.min(...absValues);
+        const vMax = Math.max(...absValues);
+
+        values.forEach((v, i) => {
+            ctx.fillStyle = getColor(Math.abs(v), vMin, vMax);
+            ctx.fillRect(i, 0, 1, 1);
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const neuronIdx = Math.floor((e.clientX - rect.left) / rect.width * nNeurons);
+            const val = values[Math.min(neuronIdx, nNeurons - 1)];
+            showTooltip(e, `
+                <div class="tt-title">${label} - Layer ${layerIdx}</div>
+                <div>Neuron group: ${neuronIdx}/${nNeurons}</div>
+                <div>Value: ${val.toFixed(4)}</div>
+            `);
+        });
+        canvas.addEventListener('mouseleave', hideTooltip);
+
+        return canvas;
+    }
+
+    // ============================================================
+    // UI Updates
+    // ============================================================
+    function updateStatus(s) {
+        document.getElementById('status-dot').className = 'status-dot ' + s;
+    }
+
+    function updateTokenStream() {
+        const container = document.getElementById('token-stream');
+        container.innerHTML = '';
+        state.allTokens.forEach((tok, i) => {
+            const span = document.createElement('span');
+            span.className = 'token';
+            span.textContent = tok;
+            if (i === state.selectedToken) span.classList.add('active');
+            span.addEventListener('click', () => {
+                state.selectedToken = i;
+                document.querySelectorAll('.token-stream .token').forEach(el => el.classList.remove('active'));
+                span.classList.add('active');
+                document.getElementById('token-select').value = i;
+                renderCurrentView();
+            });
+            span.addEventListener('mouseenter', (e) => {
+                showTooltip(e, `<div class="tt-title">Token ${i}</div><div>"${tok.replace(/</g,'&lt;')}"</div>`);
+            });
+            span.addEventListener('mouseleave', hideTooltip);
+            container.appendChild(span);
+        });
+    }
+
+    function updateStats() {
+        const data = state.prefillData;
+        if (!data) return;
+        document.getElementById('stat-tokens').textContent = state.allTokens.length;
+        let totalFiring = 0, firingCount = 0;
+        data.layers.forEach(l => {
+            if (l.gate && l.gate.firing_rate) {
+                l.gate.firing_rate.forEach(r => { totalFiring += r; firingCount++; });
+            }
+        });
+        if (firingCount > 0) {
+            document.getElementById('stat-firing').textContent = (totalFiring / firingCount * 100).toFixed(1) + '%';
+        }
+    }
+
+    function updateTokenSelect() {
+        const sel = document.getElementById('token-select');
+        sel.innerHTML = '<option value="-1">All tokens</option>';
+        state.allTokens.forEach((tok, i) => {
+            const opt = document.createElement('option');
+            opt.value = i;
+            opt.textContent = `${i}: "${tok.trim() || '\\n'}"`;
+            sel.appendChild(opt);
+        });
+    }
+
+    // ============================================================
+    // Tooltip
+    // ============================================================
+    function showTooltip(e, html) {
+        const tt = document.getElementById('tooltip');
+        tt.innerHTML = html;
+        tt.style.display = 'block';
+        tt.style.left = (e.clientX + 12) + 'px';
+        tt.style.top = (e.clientY + 12) + 'px';
+    }
+
+    function hideTooltip() {
+        document.getElementById('tooltip').style.display = 'none';
+    }
+
+    // ============================================================
+    // Rendering
+    // ============================================================
+    function renderCurrentView() {
+        const activeTab = document.querySelector('.viz-tab.active').dataset.tab;
+        switch (activeTab) {
+            case 'heatmap': renderHeatmap(); break;
+            case 'firing': renderFiringRate(); break;
+            case 'network': renderNetwork(); break;
+            case 'ablation': break; // rendered on ablation complete
+        }
+    }
+
+    function renderHeatmap() {
+        const data = state.prefillData;
+        if (!data) return;
+
+        document.getElementById('heatmap-empty').style.display = 'none';
+        document.getElementById('heatmap-content').style.display = 'block';
+
+        const container = document.getElementById('heatmap-layers');
+        container.innerHTML = '';
+
+        const legend = document.getElementById('heatmap-legend');
+        legend.innerHTML = `
+            <span>Low</span>
+            <canvas id="legend-canvas" width="120" height="10" style="border-radius:3px;"></canvas>
+            <span>High</span>
+            <span style="margin-left: 16px;">Showing: ${state.selectedToken >= 0 ? `Token "${state.allTokens[state.selectedToken]?.trim()}"` : 'All tokens (mean)'}</span>
+        `;
+        const lcanvas = document.getElementById('legend-canvas');
+        const lctx = lcanvas.getContext('2d');
+        for (let x = 0; x < 120; x++) {
+            lctx.fillStyle = getColor(x / 119, 0, 1);
+            lctx.fillRect(x, 0, 1, 10);
+        }
+
+        data.layers.forEach((layer, layerIdx) => {
+            const row = document.createElement('div');
+            row.className = 'layer-row';
+
+            const label = document.createElement('div');
+            label.className = 'layer-label';
+            label.textContent = `L${layerIdx}`;
+            row.appendChild(label);
+
+            let heatmap = null, source = '';
+            if (layer.gate && layer.gate.heatmap) { heatmap = layer.gate.heatmap; source = 'gate (SwiGLU)'; }
+            else if (layer.mlp && layer.mlp.heatmap) { heatmap = layer.mlp.heatmap; source = 'MLP output'; }
+            else if (layer.residual && layer.residual.heatmap) { heatmap = layer.residual.heatmap; source = 'residual stream'; }
+
+            if (!heatmap) {
+                row.innerHTML += '<div style="color:var(--text-dim);font-size:11px;">No data</div>';
+                container.appendChild(row);
+                return;
+            }
+
+            let values;
+            const tokenIdx = state.selectedToken;
+            if (tokenIdx >= 0 && tokenIdx < heatmap.length) {
+                values = heatmap[tokenIdx];
+            } else {
+                const nNeurons = heatmap[0].length;
+                values = new Array(nNeurons).fill(0);
+                heatmap.forEach(tokenRow => tokenRow.forEach((v, i) => { values[i] += v; }));
+                values = values.map(v => v / heatmap.length);
+            }
+
+            const absValues = values.map(Math.abs);
+            const vMin = Math.min(...absValues);
+            const vMax = Math.max(...absValues);
+
+            const heatmapDiv = document.createElement('div');
+            heatmapDiv.className = 'heatmap-row';
+
+            const canvas = document.createElement('canvas');
+            canvas.width = values.length;
+            canvas.height = 1;
+            canvas.style.width = '100%';
+            canvas.style.height = '16px';
+            canvas.style.borderRadius = '2px';
+            canvas.style.imageRendering = 'pixelated';
+            const ctx = canvas.getContext('2d');
+            values.forEach((v, i) => {
+                ctx.fillStyle = getColor(Math.abs(v), vMin, vMax);
+                ctx.fillRect(i, 0, 1, 1);
+            });
+
+            canvas.addEventListener('mousemove', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const neuronIdx = Math.floor((e.clientX - rect.left) / rect.width * values.length);
+                const val = values[Math.min(neuronIdx, values.length - 1)];
+                showTooltip(e, `
+                    <div class="tt-title">Layer ${layerIdx} - ${source}</div>
+                    <div>Neuron group: ${neuronIdx}/${values.length}</div>
+                    <div>Value: ${val.toFixed(4)}</div>
+                    <div>|Value|: ${Math.abs(val).toFixed(4)}</div>
+                `);
+            });
+            canvas.addEventListener('mouseleave', hideTooltip);
+
+            heatmapDiv.appendChild(canvas);
+            row.appendChild(heatmapDiv);
+
+            if (layer.gate && layer.gate.firing_rate) {
+                const rateArr = layer.gate.firing_rate;
+                const rate = tokenIdx >= 0 && tokenIdx < rateArr.length
+                    ? rateArr[tokenIdx]
+                    : rateArr.reduce((a, b) => a + b, 0) / rateArr.length;
+                const rateDiv = document.createElement('div');
+                rateDiv.style.cssText = 'font-size:10px;color:var(--text-dim);width:42px;text-align:right;flex-shrink:0;';
+                rateDiv.textContent = (rate * 100).toFixed(0) + '%';
+                row.appendChild(rateDiv);
+            }
+
+            container.appendChild(row);
+        });
+    }
+
+    function renderFiringRate() {
+        const data = state.prefillData;
+        if (!data) return;
+
+        document.getElementById('firing-empty').style.display = 'none';
+        const container = document.getElementById('firing-chart');
+        container.style.display = 'block';
+        container.innerHTML = '';
+
+        const margin = { top: 20, right: 30, bottom: 40, left: 50 };
+        const width = container.clientWidth - margin.left - margin.right;
+        const height = 400 - margin.top - margin.bottom;
+
+        const svg = d3.select(container)
+            .append('svg')
+            .attr('width', width + margin.left + margin.right)
+            .attr('height', height + margin.top + margin.bottom)
+            .append('g')
+            .attr('transform', `translate(${margin.left},${margin.top})`);
+
+        const layerRates = [];
+        data.layers.forEach((layer, i) => {
+            if (layer.gate && layer.gate.firing_rate) {
+                const rates = layer.gate.firing_rate;
+                const avg = rates.reduce((a, b) => a + b, 0) / rates.length;
+                layerRates.push({ layer: i, rate: avg, min: Math.min(...rates), max: Math.max(...rates) });
+            }
+        });
+
+        if (layerRates.length > 0) {
+            const x = d3.scaleBand().domain(layerRates.map(d => d.layer)).range([0, width]).padding(0.2);
+            const y = d3.scaleLinear().domain([0, Math.min(1, d3.max(layerRates, d => d.max) * 1.1)]).range([height, 0]);
+
+            svg.append('g').selectAll('line').data(y.ticks(5)).enter()
+                .append('line')
+                .attr('x1', 0).attr('x2', width)
+                .attr('y1', d => y(d)).attr('y2', d => y(d))
+                .attr('stroke', '#2a2a3a').attr('stroke-dasharray', '2,2');
+
+            svg.selectAll('.error-bar').data(layerRates).enter()
+                .append('line')
+                .attr('x1', d => x(d.layer) + x.bandwidth() / 2)
+                .attr('x2', d => x(d.layer) + x.bandwidth() / 2)
+                .attr('y1', d => y(d.min)).attr('y2', d => y(d.max))
+                .attr('stroke', '#6366f1').attr('stroke-width', 1.5).attr('opacity', 0.5);
+
+            svg.selectAll('.bar').data(layerRates).enter()
+                .append('rect')
+                .attr('x', d => x(d.layer)).attr('y', d => y(d.rate))
+                .attr('width', x.bandwidth()).attr('height', d => height - y(d.rate))
+                .attr('fill', d => getColor(d.rate, 0, 1)).attr('rx', 2)
+                .on('mouseenter', (e, d) => {
+                    showTooltip(e, `
+                        <div class="tt-title">Layer ${d.layer}</div>
+                        <div>Avg firing: ${(d.rate * 100).toFixed(1)}%</div>
+                        <div>Min: ${(d.min * 100).toFixed(1)}% | Max: ${(d.max * 100).toFixed(1)}%</div>
+                    `);
+                })
+                .on('mouseleave', hideTooltip);
+
+            svg.append('g').attr('transform', `translate(0,${height})`)
+                .call(d3.axisBottom(x).tickValues(x.domain().filter((_, i) => i % 2 === 0)))
+                .selectAll('text').attr('fill', '#8888a0').style('font-size', '10px');
+            svg.append('g').call(d3.axisLeft(y).ticks(5).tickFormat(d => (d * 100) + '%'))
+                .selectAll('text').attr('fill', '#8888a0').style('font-size', '10px');
+            svg.selectAll('.domain, .tick line').attr('stroke', '#2a2a3a');
+
+            svg.append('text').attr('x', width / 2).attr('y', height + 35)
+                .attr('text-anchor', 'middle').attr('fill', '#8888a0').style('font-size', '11px').text('Layer');
+            svg.append('text').attr('transform', 'rotate(-90)').attr('x', -height / 2).attr('y', -40)
+                .attr('text-anchor', 'middle').attr('fill', '#8888a0').style('font-size', '11px').text('Firing Rate');
+        }
+    }
+
+    function renderNetwork() {
+        const data = state.prefillData;
+        if (!data) return;
+
+        document.getElementById('network-empty').style.display = 'none';
+        const svg = document.getElementById('network-svg');
+        svg.style.display = 'block';
+        svg.innerHTML = '';
+
+        const rect = svg.parentElement.getBoundingClientRect();
+        const width = rect.width - 40;
+        const height = Math.max(600, data.num_layers * 25 + 100);
+        svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+
+        const ns = 'http://www.w3.org/2000/svg';
+        const numLayers = data.num_layers;
+        const layerHeight = (height - 80) / numLayers;
+        const centerX = width / 2;
+        const nodesPerLayer = 16;
+        const nodeSpacing = Math.min(32, (width - 120) / nodesPerLayer);
+
+        data.layers.forEach((layer, layerIdx) => {
+            const y = 40 + layerIdx * layerHeight;
+            const startX = centerX - (nodesPerLayer / 2) * nodeSpacing;
+
+            let firingValues = null;
+            if (layer.gate && layer.gate.heatmap) {
+                const hm = layer.gate.heatmap;
+                const nNeurons = hm[0].length;
+                const avg = new Array(nNeurons).fill(0);
+                hm.forEach(row => row.forEach((v, i) => avg[i] += v));
+                for (let i = 0; i < nNeurons; i++) avg[i] /= hm.length;
+                const chunk = Math.floor(nNeurons / nodesPerLayer);
+                firingValues = [];
+                for (let i = 0; i < nodesPerLayer; i++) {
+                    let sum = 0;
+                    for (let j = i * chunk; j < (i + 1) * chunk; j++) sum += Math.abs(avg[j]);
+                    firingValues.push(sum / chunk);
+                }
+            }
+
+            const label = document.createElementNS(ns, 'text');
+            label.setAttribute('x', 10); label.setAttribute('y', y + 4);
+            label.setAttribute('fill', '#8888a0'); label.setAttribute('font-size', '9');
+            label.textContent = `L${layerIdx}`;
+            svg.appendChild(label);
+
+            if (layer.gate && layer.gate.firing_rate) {
+                const rate = layer.gate.firing_rate.reduce((a, b) => a + b, 0) / layer.gate.firing_rate.length;
+                const rateLabel = document.createElementNS(ns, 'text');
+                rateLabel.setAttribute('x', width - 10); rateLabel.setAttribute('y', y + 4);
+                rateLabel.setAttribute('fill', '#8888a0'); rateLabel.setAttribute('font-size', '9');
+                rateLabel.setAttribute('text-anchor', 'end');
+                rateLabel.textContent = `${(rate * 100).toFixed(0)}%`;
+                svg.appendChild(rateLabel);
+            }
+
+            for (let n = 0; n < nodesPerLayer; n++) {
+                const cx = startX + n * nodeSpacing;
+                const r = nodeSpacing * 0.35;
+                let intensity = 0.1;
+                if (firingValues) {
+                    const maxV = Math.max(...firingValues.map(Math.abs));
+                    intensity = maxV > 0 ? Math.abs(firingValues[n]) / maxV : 0;
+                }
+
+                if (intensity > 0.3) {
+                    const glow = document.createElementNS(ns, 'circle');
+                    glow.setAttribute('cx', cx); glow.setAttribute('cy', y);
+                    glow.setAttribute('r', r * (1 + intensity));
+                    glow.setAttribute('fill', getColor(intensity, 0, 1));
+                    glow.setAttribute('opacity', intensity * 0.3);
+                    svg.appendChild(glow);
+                }
+
+                const circle = document.createElementNS(ns, 'circle');
+                circle.setAttribute('cx', cx); circle.setAttribute('cy', y);
+                circle.setAttribute('r', r);
+                circle.setAttribute('fill', getColor(intensity, 0, 1));
+                circle.setAttribute('stroke', intensity > 0.5 ? getColor(intensity, 0, 1) : '#2a2a3a');
+                circle.setAttribute('stroke-width', '0.5');
+                circle.setAttribute('opacity', 0.3 + intensity * 0.7);
+                svg.appendChild(circle);
+            }
+
+            if (layerIdx < numLayers - 1) {
+                const nextY = 40 + (layerIdx + 1) * layerHeight;
+                for (let n = 0; n < nodesPerLayer; n += 3) {
+                    const line = document.createElementNS(ns, 'line');
+                    line.setAttribute('x1', startX + n * nodeSpacing);
+                    line.setAttribute('y1', y + nodeSpacing * 0.35);
+                    line.setAttribute('x2', startX + n * nodeSpacing);
+                    line.setAttribute('y2', nextY - nodeSpacing * 0.35);
+                    line.setAttribute('stroke', '#1a1a25'); line.setAttribute('stroke-width', '0.5');
+                    svg.appendChild(line);
+                }
+            }
+        });
+    }
+
+    // ============================================================
+    // Event Handlers
+    // ============================================================
+    document.getElementById('generate-btn').addEventListener('click', () => {
+        if (!state.connected || state.generating) return;
+        const prompt = document.getElementById('prompt-input').value.trim();
+        if (!prompt) return;
+
+        state.generating = true;
+        state.prefillData = null;
+        state.tokenSteps = [];
+        state.allTokens = [];
+        state.selectedToken = -1;
+
+        document.getElementById('generate-btn').disabled = true;
+        document.getElementById('generate-btn').textContent = 'Generating...';
+        document.getElementById('ablate-btn').disabled = true;
+        updateStatus('loading');
+
+        state.ws.send(JSON.stringify({
+            type: 'generate',
+            prompt: prompt,
+            max_tokens: parseInt(document.getElementById('max-tokens').value),
+        }));
+    });
+
+    document.getElementById('ablate-btn').addEventListener('click', () => {
+        if (!state.connected || state.ablating) return;
+        const concept = document.getElementById('ablate-concept').value.trim();
+        const prompt = document.getElementById('prompt-input').value.trim();
+        if (!concept || !prompt) { alert('Enter both a concept and a prompt'); return; }
+
+        state.ablating = true;
+        document.getElementById('ablate-btn').disabled = true;
+        document.getElementById('ablate-btn').textContent = 'Ablating...';
+        document.getElementById('generate-btn').disabled = true;
+        updateStatus('loading');
+
+        // Show ablation panel
+        document.getElementById('ablation-empty').style.display = 'none';
+        document.getElementById('ablation-content').style.display = 'block';
+        document.getElementById('ablation-log').innerHTML = '';
+        document.getElementById('normal-output').textContent = '...';
+        document.getElementById('ablated-output').textContent = '...';
+        document.getElementById('neuron-map').innerHTML = '';
+        document.getElementById('ablation-heatmaps').innerHTML = '';
+
+        // Switch to ablation tab
+        document.querySelectorAll('.viz-tab').forEach(t => t.classList.remove('active'));
+        document.querySelector('[data-tab="ablation"]').classList.add('active');
+        document.querySelectorAll('.viz-panel').forEach(p => p.classList.add('hidden'));
+        document.getElementById('panel-ablation').classList.remove('hidden');
+
+        state.ws.send(JSON.stringify({
+            type: 'ablate',
+            concept: concept,
+            prompt: prompt,
+            max_tokens: parseInt(document.getElementById('max-tokens').value),
+            alpha: parseFloat(document.getElementById('ablate-alpha').value),
+        }));
+    });
+
+    document.getElementById('max-tokens').addEventListener('input', (e) => {
+        document.getElementById('max-tokens-val').textContent = e.target.value;
+    });
+
+    document.getElementById('ablate-alpha').addEventListener('input', (e) => {
+        document.getElementById('ablate-alpha-val').textContent = e.target.value;
+    });
+
+    document.getElementById('token-select').addEventListener('change', (e) => {
+        state.selectedToken = parseInt(e.target.value);
+        renderCurrentView();
+    });
+
+    document.getElementById('color-scale').addEventListener('change', (e) => {
+        state.colorScale = e.target.value;
+        renderCurrentView();
+    });
+
+    document.querySelectorAll('.viz-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.viz-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            document.querySelectorAll('.viz-panel').forEach(p => p.classList.add('hidden'));
+            document.getElementById(`panel-${tab.dataset.tab}`).classList.remove('hidden');
+            renderCurrentView();
+        });
+    });
+
+    // ============================================================
+    // Init
+    // ============================================================
+    connect();
+    </script>
+</body>
+</html>
