@@ -1,0 +1,17 @@
+{"event":"on_chain_start","name":"planner","run_id":"run-planner","metadata":{"langgraph_node":"planner"},"data":{"input":{"request":"Build an evidence-bound integration"}},"timestamp":0}
+{"event":"on_tool_start","name":"search","run_id":"tool-plan-search","parent_ids":["run-planner"],"metadata":{"langgraph_node":"planner"},"data":{"input":{"query":"integration evidence"}},"timestamp":650}
+{"event":"on_tool_end","name":"search","run_id":"tool-plan-search","parent_ids":["run-planner"],"metadata":{"langgraph_node":"planner"},"data":{"output":"bounded result"},"timestamp":1800}
+{"event":"on_custom_event","name":"agent_handoff","run_id":"handoff-1","metadata":{"langgraph_node":"planner"},"data":{"handoff_id":"handoff-1","from":"planner","to":"researcher","artifact_id":"research-brief","status":"started"},"timestamp":1950}
+{"event":"on_custom_event","name":"agent_handoff","run_id":"handoff-1","metadata":{"langgraph_node":"planner"},"data":{"handoff_id":"handoff-1","from":"planner","to":"researcher","artifact_id":"research-brief","status":"completed"},"timestamp":3650}
+{"event":"on_chain_end","name":"planner","run_id":"run-planner","metadata":{"langgraph_node":"planner"},"data":{"output":"research brief transferred"},"timestamp":3700}
+{"event":"on_chain_start","name":"researcher","run_id":"run-researcher","metadata":{"langgraph_node":"researcher"},"data":{"input":{"artifact_id":"research-brief"}},"timestamp":3750}
+{"event":"on_tool_start","name":"read","run_id":"tool-evidence-read","parent_ids":["run-researcher"],"metadata":{"langgraph_node":"researcher"},"data":{"input":{"path":"evidence.md"}},"timestamp":4200}
+{"event":"on_tool_end","name":"read","run_id":"tool-evidence-read","parent_ids":["run-researcher"],"metadata":{"langgraph_node":"researcher"},"data":{"output":"verified evidence"},"timestamp":5550}
+{"event":"on_custom_event","name":"agent_handoff","run_id":"handoff-2","metadata":{"langgraph_node":"researcher"},"data":{"handoff_id":"handoff-2","from":"researcher","to":"builder","artifact_id":"evidence-bundle","status":"started"},"timestamp":5700}
+{"event":"on_custom_event","name":"agent_handoff","run_id":"handoff-2","metadata":{"langgraph_node":"researcher"},"data":{"handoff_id":"handoff-2","from":"researcher","to":"builder","artifact_id":"evidence-bundle","status":"completed"},"timestamp":7400}
+{"event":"on_chain_end","name":"researcher","run_id":"run-researcher","metadata":{"langgraph_node":"researcher"},"data":{"output":"evidence transferred"},"timestamp":7450}
+{"event":"on_chain_start","name":"builder","run_id":"run-builder","metadata":{"langgraph_node":"builder"},"data":{"input":{"artifact_id":"evidence-bundle"}},"timestamp":7500}
+{"event":"on_tool_start","name":"edit","run_id":"tool-build","parent_ids":["run-builder"],"metadata":{"langgraph_node":"builder"},"data":{"input":{"path":"integration.ts"}},"timestamp":8000}
+{"event":"on_tool_end","name":"edit","run_id":"tool-build","parent_ids":["run-builder"],"metadata":{"langgraph_node":"builder"},"data":{"output":"change applied"},"timestamp":9600}
+{"event":"on_chat_model_stream","name":"model","run_id":"model-builder","parent_ids":["run-builder"],"metadata":{"langgraph_node":"builder"},"data":{"chunk":{"content":"Integration verified."}},"timestamp":9750}
+{"event":"on_chain_end","name":"builder","run_id":"run-builder","metadata":{"langgraph_node":"builder"},"data":{"output":"complete"},"timestamp":10300}

@@ -18,6 +18,7 @@ elevate/
 │   ├── visualize/           # LLM neuron firing visualizer + ablation
 │   ├── cerebellar/          # Multi-model braille consensus (artificial cerebellar loop)
 │   ├── braille-bench/       # Braille compression benchmarks
+│   ├── pi-face/             # Visual presence engine for AI agents (braille terminal art)
 │   └── meta/                # Exposure toolkit, corpus builder, dashboard
 │
 └── papers/                  # Whitepapers and formal specifications
@@ -33,6 +34,7 @@ elevate/
 | **visualize** | Python + React | Interactive neuron-firing visualizer for small LLMs. Real-time activation heatmaps, directional ablation (concept erasure), batch experiments, interference analysis. |
 | **cerebellar** | Python (Streamlit) | Bio-inspired multi-model consensus where ~16 LLMs communicate exclusively in 8-dot braille, converging through cerebellar feedback loops. Includes BBID handshake, sonification, and consensus-gated tool execution. |
 | **braille-bench** | TypeScript | Benchmarking suite for 8-dot braille compression. Tests LLM encode/decode via braille cells, measures fidelity and compression ratio across model pairs. Includes deterministic "Cerebraille" codec with GraphQL API. |
+| **pi-face** | TypeScript | Visual presence engine for AI agents. Particle-swarm choreography driven by observable lifecycle events (tool calls, runs, errors). Renders in Canvas, WebGL, SVG, or terminal braille. Includes Pi terminal cat companion, multi-agent collective mode, LangGraph adapter, and tool algebra. |
 | **meta** | Bash + Node.js | Exposure measurement toolkit (traffic, forks, Common Crawl, canaries), org corpus builder with LoRA fine-tuning, and Next.js evidence dashboard. |
 
 ## Shared Libraries

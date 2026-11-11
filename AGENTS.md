@@ -13,6 +13,7 @@ elevate/
 ├── packages/visualize/    # LLM neuron visualizer (Python + React)
 ├── packages/cerebellar/   # Multi-model braille consensus (Python/Streamlit)
 ├── packages/braille-bench/# Braille compression benchmarks (TypeScript)
+├── packages/pi-face/      # Visual presence engine for AI agents
 ├── packages/meta/         # Exposure toolkit + corpus builder + dashboard
 └── papers/                # Whitepapers and specs
 ```
@@ -25,7 +26,7 @@ libs/braille  <── libs/bbid
      │              │
   ┌──┴──────────────┤
   │                 │
-cortex  famulus  sal  cerebellar  braille-bench  visualize  meta
+cortex  famulus  sal  cerebellar  braille-bench  pi-face  visualize  meta
   │                                                          │
   └── libs/audit ←──────────────────────────────────────────┘
 ```
@@ -71,6 +72,14 @@ When modifying shared code in `libs/`, check all consumers:
 - Entry: `npm start` (Express + GraphQL on default port)
 - Benchmarks: `npm run suite`
 - Requires API keys for model providers
+
+### packages/pi-face
+- Browser demo: `npm ci --ignore-scripts && npm run demo:serve` (opens :4173)
+- Collective lab: `open http://localhost:4173/collective.html`
+- Tests: `npm test`
+- Requires Node.js >= 22.19
+- Braille rendering uses U+2800-U+28FF (same base as libs/braille)
+- AgentFaceEvent types map to cortex/famulus lifecycle events
 
 ### packages/meta
 - Exposure toolkit: `cd exposure-toolkit && ./exposure.sh help`
